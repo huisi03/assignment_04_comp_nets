@@ -32,6 +32,8 @@
     <ClInclude Include="Scripts\GameState_Asteroids.h" />
     <ClInclude Include="Scripts\Network.h" />
     <ClInclude Include="Scripts\Main.h" />
+    <ClInclude Include="Scripts\taskqueue.h" />
+    <ClInclude Include="Scripts\taskqueue.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{EC5E8CF5-9A2C-473F-9354-442034368150}</ProjectGuid>
