@@ -23,6 +23,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 // Globals
 float	 g_dt;
 double	 g_appTime;
+int			pFont; // this is for the text
+const int	Fontsize = 25; // size of the text
 
 /******************************************************************************/
 /*!
@@ -51,6 +53,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	{
 		std::cerr << "Error Connecting to Network" << std::endl;
 	}
+
 
 	// Game loop
 	if (networkType == NetworkType::SERVER)
@@ -145,6 +148,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		// Initialize the system
 		AESysInit(instanceH, show, 800, 600, 1, 60, false, NULL);
 
+		pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", Fontsize);
+
 		// Changing the window title
 		AESysSetWindowTitle("Asteroids!");
 
@@ -152,7 +157,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);
 
 		// set starting game state to asteroid
-		GameStateMgrInit(GS_ASTEROIDS);
+		//GameStateMgrInit(GS_ASTEROIDS);
+		GameStateMgrInit(GS_MAINMENU);  // Start at the main Menu
 
 		// breaks this loop if game state set to quit
 		while (gGameStateCurr != GS_QUIT)
@@ -213,6 +219,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	// Wait for the user to press any key
 	std::cout << "Press any key to exit..." << std::endl;
 	std::cin.get();
+
+	//free you font here
+	AEGfxDestroyFont((s8)pFont);
 
 	// free console
 	FreeConsoleWindow();
