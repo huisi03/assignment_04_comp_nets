@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="NetworkGameState.cpp" />
     <ClCompile Include="Scripts\Collision.cpp" />
     <ClCompile Include="Scripts\GameStateMgr.cpp" />
     <ClCompile Include="Scripts\GameState_Asteroids.cpp" />
@@ -27,6 +28,7 @@
     <ClCompile Include="Scripts\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="NetworkGameState.h" />
     <ClInclude Include="Scripts\Collision.h" />
     <ClInclude Include="Scripts\GameStateList.h" />
     <ClInclude Include="Scripts\GameStateMgr.h" />
