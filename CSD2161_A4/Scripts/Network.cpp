@@ -5,6 +5,7 @@
 NetworkType networkType = NetworkType::UNINITIALISED;
 sockaddr_in targetAddress;
 uint16_t port;
+uint16_t clientPort;
 SOCKET udpSocket;
 
 void AttachConsoleWindow()
@@ -138,11 +139,11 @@ int ConnectToServer()
 	std::string portString;
 	std::cout << "Client UDP Port Number: ";
 	std::getline(std::cin, portString);
-	port = static_cast<uint16_t>(std::stoi(portString));
+	clientPort = static_cast<uint16_t>(std::stoi(portString));
 
 	// Setup WSA data
 	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(WINSOCK_VERSION, WINSOCK_SUBVERSION), &wsaData) != 0) 
+	if (WSAStartup(MAKEWORD(WINSOCK_VERSION, WINSOCK_SUBVERSION), &wsaData) != 0)
 	{
 		std::cerr << "WSAStartup() failed." << std::endl;
 		return ERROR_CODE;
@@ -168,6 +169,22 @@ int ConnectToServer()
 	if (udpSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
+		freeaddrinfo(udpInfo);
+		WSACleanup();
+		return ERROR_CODE;
+	}
+
+	// Bind the socket to the client port for receiving data
+	sockaddr_in clientAddr{};
+	clientAddr.sin_family = AF_INET;
+	clientAddr.sin_addr.s_addr = INADDR_ANY;  // Accept packets from any interface
+	clientAddr.sin_port = htons(clientPort);
+
+	if (bind(udpSocket, (sockaddr*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR)
+	{
+		std::cerr << "bind() failed. Error: " << WSAGetLastError() << std::endl;
+		closesocket(udpSocket);
+		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
@@ -180,11 +197,10 @@ int ConnectToServer()
 	std::cout << "Client has been established" << std::endl;
 	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
 	std::cout << "Server UDP Port Number: " << serverPort << std::endl;
-	std::cout << "Client UDP Port Number: " << port << std::endl;
+	std::cout << "Client UDP Port Number: " << clientPort << std::endl;
 	std::cout << std::endl;
 
 	freeaddrinfo(udpInfo);
-
 	return 0;
 }
 
@@ -217,6 +233,7 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 		std::cerr << "Failed to receive data. Error: " << WSAGetLastError() << std::endl;
 	}
 
+
 	return packet;
 }
 
@@ -224,7 +241,7 @@ void SendJoinRequest(SOCKET socket, sockaddr_in address)
 {
 	NetworkPacket packet;
 	packet.packetID = PacketID::JOIN_REQUEST;
-	packet.sourcePortNumber = port;
+	packet.sourcePortNumber = clientPort;
 	packet.destinationPortNumber = address.sin_port;
 	SendPacket(socket, address, packet);
 }
@@ -253,20 +270,37 @@ void SendInput(SOCKET socket, sockaddr_in address)
 	SendPacket(socket, address, packet);
 }
 
+uint16_t GetClientPort()
+{
+	return clientPort;
+}
+
 void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 {
-	if (packet.packetID == PacketID::GAME_INPUT)
+	NetworkPacket responsePacket;
+	responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
+	responsePacket.sourcePortNumber = port;
+	responsePacket.destinationPortNumber = packet.sourcePortNumber;
+	if (packet.packetID == InputKey::NONE)
 	{
-		std::cout << "Received input from Player [" << packet.sourcePortNumber << "]: " << packet.data << std::endl;
-
-		NetworkPacket responsePacket;
-		responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
-		responsePacket.sourcePortNumber = port;
-		responsePacket.destinationPortNumber = packet.sourcePortNumber;
-		strcpy_s(responsePacket.data, "[GAME_STATE_DATA]");
-
-		SendPacket(socket, address, responsePacket);
+		responsePacket.data[0] = '\0';
 	}
+	else if (packet.packetID == InputKey::UP)
+	{
+		std::string text = "Up key from " + std::to_string(packet.sourcePortNumber);
+		strcpy_s(responsePacket.data, DEFAULT_BUFLEN, text.c_str());
+	}
+	else if (packet.packetID == InputKey::DOWN)
+	{
+		std::string text = "Down key from " + std::to_string(packet.sourcePortNumber);
+		strcpy_s(responsePacket.data, DEFAULT_BUFLEN, text.c_str());
+	}
+	else
+	{
+		responsePacket.data[0] = '\0';
+	}
+
+	SendPacket(socket, address, responsePacket);
 }
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address)

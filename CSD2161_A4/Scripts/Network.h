@@ -51,12 +51,29 @@ enum PacketID
     GAME_STATE_UPDATE
 };
 
+enum InputKey
+{
+    NONE,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+    SPACE
+};
+
 struct NetworkPacket
 {
+    NetworkPacket()
+    {
+        memset(data, 0, DEFAULT_BUFLEN);  // Ensures data is fully null-terminated
+    }
+
     uint16_t packetID;
     uint16_t sourcePortNumber;
     uint16_t destinationPortNumber;
     char data[DEFAULT_BUFLEN];
+
+
 };
 
 // Global variables
@@ -84,5 +101,7 @@ void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address);
 void ReceiveGameStateStart(SOCKET socket);
+
+uint16_t GetClientPort();
 
 #endif

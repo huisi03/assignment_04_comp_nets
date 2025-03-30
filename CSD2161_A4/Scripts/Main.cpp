@@ -62,7 +62,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		
 		sockaddr_in address{};
 		std::map<uint32_t, sockaddr_in> clients;
-		int clientsRequired = 1;
+		int clientsRequired = 2;
 		int clientCount = 0;
 
 		while (true)
@@ -126,19 +126,52 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		ReceiveGameStateStart(udpSocket);
 
+		HWND clientWindow = GetConsoleWindow();
+
 		while (true)
 		{
-			SendInput(udpSocket, targetAddress);
-
-			NetworkPacket packet = ReceivePacket(udpSocket, targetAddress);
-			if (packet.packetID == GAME_STATE_UPDATE)
+			if (GetForegroundWindow() != clientWindow)
 			{
-				std::cout << "Game state updated: " << packet.data << std::endl;
+				Sleep(10); // Small delay to avoid 100% CPU usage
+				continue;
+			}
+			NetworkPacket packet;
+
+			if (GetAsyncKeyState(VK_UP) & 0x8000)
+			{
+				std::cout << "UP" << std::endl;
+				packet.packetID = InputKey::UP;
+				strcpy_s(packet.data, "Up");
+			}
+			else if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+			{
+				std::cout << "Down" << std::endl;
+				packet.packetID = InputKey::DOWN;
+				strcpy_s(packet.data, "Down");
 			}
 			else
 			{
-				std::cout << "Received unknown packet from " << packet.sourcePortNumber << std::endl;
+
+				packet.packetID = InputKey::NONE;
 			}
+
+			packet.sourcePortNumber = GetClientPort();
+			packet.destinationPortNumber = targetAddress.sin_port;
+			SendPacket(udpSocket, targetAddress, packet);
+
+			NetworkPacket receivedPacket = ReceivePacket(udpSocket, targetAddress);
+			if (receivedPacket.packetID == GAME_STATE_UPDATE)
+			{
+				if (!std::string(receivedPacket.data).empty())
+				{
+					std::cout << "Game state updated: " << receivedPacket.data << std::endl;
+				}
+			}
+			else
+			{
+				std::cout << "Received unknown packet from " << receivedPacket.sourcePortNumber << std::endl;
+			}
+			Sleep(10); // Small delay to avoid 100% CPU usage
 		}
 
 		Disconnect();
