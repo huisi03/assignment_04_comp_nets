@@ -49,6 +49,7 @@ struct NetworkPlayerData
 #define MAX_NAME_LENGTH			8	// Maximum length of a name
 #define TIME_FORMAT				20	// Format: "YYYY-MM-DD HH:MM:SS"
 #define MAX_LEADERBOARD_SCORES	20	// Maximum number of scores allowed on the leaderboard
+#define LEADERBOARD_FILE_NAME	"Resources/Leaderboard.txt"	// File name for the leaderboard
 
 // Struct to represent a player's score and additional data for the leaderboard
 struct NetworkScore
@@ -111,11 +112,11 @@ bool GetNetworkPlayerData(uint32_t identifier, uint32_t& score, uint32_t& lives)
 bool AddScoreToLeaderboard(uint32_t identifier, char const* name, uint32_t score, char const* timestamp);
 
 // Function to save the current leaderboard to a file
-void SaveLeaderboard(char const* filename);
+void SaveLeaderboard(char const* filename = LEADERBOARD_FILE_NAME);
 
 // Function to load the leaderboard from a file
-void LoadLeaderboard(char const* filename);
+void LoadLeaderboard(char const* filename = LEADERBOARD_FILE_NAME);
 
 // Function to retrieve a list of the top players from the leaderboard, formatted as strings
 // It returns a vector of strings, each containing a player's name, score, and timestamp
-std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount);
+std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount = 5);

@@ -16,9 +16,6 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 // Main header
 #include "NetworkGameState.h"
 
-// File name for the leaderboard
-#define LEADERBOARD_FILE_NAME	"Resources/leaderboard.txt"
-
 // definition for networked game state
 std::mutex gameStateMutex;
 NetworkGameState currentGameState;
@@ -188,7 +185,7 @@ bool AddScoreToLeaderboard(uint32_t identifier, char const* name, uint32_t score
 	return false;
 }
 
-void SaveLeaderboard(char const* filename = LEADERBOARD_FILE_NAME)
+void SaveLeaderboard(char const* filename)
 {
 	// Mutex lock for synchronisation
 	std::lock_guard<std::mutex> lock(leaderboardMutex);
@@ -199,7 +196,7 @@ void SaveLeaderboard(char const* filename = LEADERBOARD_FILE_NAME)
 	file.close();
 }
 
-void LoadLeaderboard(char const* filename = LEADERBOARD_FILE_NAME)
+void LoadLeaderboard(char const* filename)
 {
 	// Mutex lock for synchronisation
 	std::lock_guard<std::mutex> lock(leaderboardMutex);
@@ -208,9 +205,10 @@ void LoadLeaderboard(char const* filename = LEADERBOARD_FILE_NAME)
 	std::ifstream file(filename, std::ios::binary);
 	if (file) file.read(reinterpret_cast<char*>(&leaderboard), sizeof(NetworkLeaderboard));
 	file.close();
+	std::cout << leaderboard.scoreCount << std::endl;
 }
 
-std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount = 5)
+std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount)
 {
 	// Mutex lock for synchronisation
 	std::lock_guard<std::mutex> lock(leaderboardMutex);
@@ -229,7 +227,7 @@ std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount = 5)
 
 		// Format string for printing
 		std::ostringstream oss;
-		oss << x << ") " << score.name << ": " << score.score << " [" << score.timestamp << "]" << std::endl;
+		oss << (x + 1) << ") " << score.name << ": " << score.score << " [" << score.timestamp << "]";
 		topScores.push_back(oss.str());
 	}
 
