@@ -25,6 +25,10 @@ float	 g_dt;
 double	 g_appTime;
 int			pFont; // this is for the text
 const int	Fontsize = 25; // size of the text
+GameType gameType;
+
+void BeginGameLoop(HINSTANCE instanceH, int show);
+
 
 /******************************************************************************/
 /*!
@@ -58,6 +62,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	// Game loop
 	if (networkType == NetworkType::SERVER)
 	{
+        gameType = GameType::SERVER;
+
 		std::cout << "Processing Server..." << std::endl;
 
 		/*while (true)
@@ -110,6 +116,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	}
 	else if (networkType == NetworkType::CLIENT)
 	{
+        gameType = GameType::MULTIPLAYER;
+
 		std::cout << "Processing Client..." << std::endl;
 
         // Await RSP_CONNECT from server 
@@ -151,75 +159,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	}
 	else if (networkType == NetworkType::SINGLE_PLAYER)
 	{
-		// Initialize the system
-		AESysInit(instanceH, show, 800, 600, 1, 60, false, NULL);
+        gameType = GameType::SINGLE_PLAYER;
 
-		pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", Fontsize);
-
-		// Changing the window title
-		AESysSetWindowTitle("Asteroids!");
-
-		//set background color
-		AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);
-
-		// set starting game state to asteroid
-		//GameStateMgrInit(GS_ASTEROIDS);
-		GameStateMgrInit(GS_MAINMENU);  // Start at the main Menu
-
-		// breaks this loop if game state set to quit
-		while (gGameStateCurr != GS_QUIT)
-		{
-			// reset the system modules
-			AESysReset();
-
-			// If not restarting, load the gamestate
-			if (gGameStateCurr != GS_RESTART)
-			{
-				GameStateMgrUpdate();
-				GameStateLoad();
-			}
-			else
-			{
-				gGameStateNext = gGameStateCurr = gGameStatePrev;
-			}
-
-			// Initialize the gamestate
-			GameStateInit();
-
-			// main game loop
-			while (gGameStateCurr == gGameStateNext)
-			{
-				AESysFrameStart(); // start of frame
-
-				GameStateUpdate(); // update current game state
-
-				GameStateDraw(); // draw current game state
-
-				AESysFrameEnd(); // end of frame
-
-				// check if forcing the application to quit
-				if (AESysDoesWindowExist() == false)
-				{
-					gGameStateNext = GS_QUIT;
-				}
-
-				g_dt = static_cast<f32>(AEFrameRateControllerGetFrameTime()); // get delta time
-				g_appTime += g_dt; // accumulate application time
-			}
-
-			GameStateFree(); // free current game state
-
-			// unload current game state unless set to restart
-			if (gGameStateNext != GS_RESTART)
-				GameStateUnload();
-
-			// set prev and curr for the next game states
-			gGameStatePrev = gGameStateCurr;
-			gGameStateCurr = gGameStateNext;
-		}
-	
-		// free the system
-		AESysExit();
+        BeginGameLoop(instanceH, show);
 	}
 
 	// Wait for the user to press any key
@@ -231,4 +173,77 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 	// free console
 	FreeConsoleWindow();
+}
+
+void BeginGameLoop(HINSTANCE instanceH, int show) {
+
+    // Initialize the system
+    AESysInit(instanceH, show, 800, 600, 1, 60, false, NULL);
+
+    pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", Fontsize);
+
+    // Changing the window title
+    AESysSetWindowTitle("Asteroids!");
+
+    //set background color
+    AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);
+
+    // set starting game state to asteroid
+    //GameStateMgrInit(GS_ASTEROIDS);
+    GameStateMgrInit(GS_MAINMENU);  // Start at the main Menu
+
+    // breaks this loop if game state set to quit
+    while (gGameStateCurr != GS_QUIT)
+    {
+        // reset the system modules
+        AESysReset();
+
+        // If not restarting, load the gamestate
+        if (gGameStateCurr != GS_RESTART)
+        {
+            GameStateMgrUpdate();
+            GameStateLoad();
+        }
+        else
+        {
+            gGameStateNext = gGameStateCurr = gGameStatePrev;
+        }
+
+        // Initialize the gamestate
+        GameStateInit();
+
+        // main game loop
+        while (gGameStateCurr == gGameStateNext)
+        {
+            AESysFrameStart(); // start of frame
+
+            GameStateUpdate(); // update current game state
+
+            GameStateDraw(); // draw current game state
+
+            AESysFrameEnd(); // end of frame
+
+            // check if forcing the application to quit
+            if (AESysDoesWindowExist() == false)
+            {
+                gGameStateNext = GS_QUIT;
+            }
+
+            g_dt = static_cast<f32>(AEFrameRateControllerGetFrameTime()); // get delta time
+            g_appTime += g_dt; // accumulate application time
+        }
+
+        GameStateFree(); // free current game state
+
+        // unload current game state unless set to restart
+        if (gGameStateNext != GS_RESTART)
+            GameStateUnload();
+
+        // set prev and curr for the next game states
+        gGameStatePrev = gGameStateCurr;
+        gGameStateCurr = gGameStateNext;
+    }
+
+    // free the system
+    AESysExit();
 }

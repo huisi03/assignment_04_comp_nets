@@ -52,13 +52,17 @@ void GameStateMainMenuInit(void) {
 
 
 void GameStateMainMenuUpdate(void) {
-	if (AEInputCheckTriggered(AEVK_P)) { // if 1 is triggered then it will go to level 1. 
+
+	if (AEInputCheckTriggered(AEVK_P) && gameType == GameType::SINGLE_PLAYER) { // if 1 is triggered then it will go to level 1. 
 
 		gGameStateNext = GS_ASTEROIDS;
 	}
 	else if (AEInputCheckTriggered(AEVK_Q)) {
 		gGameStateNext = GS_QUIT; // if Q is triggereed then it quits the game. 
-	}
+    }
+    else if (AEInputCheckTriggered(AEVK_P) && gameType == GameType::MULTIPLAYER) {
+
+    }
 }
 
 
@@ -74,19 +78,16 @@ void GameStateMainMenuDraw(void) {
 	sprintf_s(strBuffer, "Asteroids Game");
 	AEGfxPrint((s8)pFont, strBuffer, textposition.x, textposition.y, 1.f, 1.f, 0.f, 1.f, 1.f); // prints the game name. 
 
-	textposition.x = -130.f;
-	textposition.y = 75.f;
-	textposition = Utilities::Worldtoscreencoordinates(textposition);
-	memset(strBuffer, 0, 100 * sizeof(char));
-	sprintf_s(strBuffer, "Press 'P' to start playing"); // click on to play level
-	AEGfxPrint((s8)pFont, strBuffer, textposition.x, textposition.y, 1.f, 1.f, 1.f, 1.f, 1.f);
-
-	textposition.x = -130.f;
-	textposition.y = 45.f;
-	textposition = Utilities::Worldtoscreencoordinates(textposition);
-	memset(strBuffer, 0, 100 * sizeof(char));
-	sprintf_s(strBuffer, "Press 'L' to enter Game loby"); // click on L to enter game loby
-	AEGfxPrint((s8)pFont, strBuffer, textposition.x, textposition.y, 1.f, 1.f, 1.f, 1.f, 1.f);
+    textposition.x = -130.f;
+    textposition.y = 75.f;
+    textposition = Utilities::Worldtoscreencoordinates(textposition);
+    memset(strBuffer, 0, 100 * sizeof(char));
+    if (gameType == GameType::SINGLE_PLAYER) {
+        sprintf_s(strBuffer, "Press 'P' to start playing"); // click on to play level
+    } else if (gameType == GameType::MULTIPLAYER) {
+        sprintf_s(strBuffer, "Press 'L' to enter Game loby"); // click on L to enter game loby
+    }
+    AEGfxPrint((s8)pFont, strBuffer, textposition.x, textposition.y, 1.f, 1.f, 1.f, 1.f, 1.f);
 
 	textposition.x = -130.f;
 	textposition.y = 15.f;
