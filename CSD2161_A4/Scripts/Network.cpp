@@ -7,6 +7,7 @@ uint32_t sendBase = SEQ_NUM_MIN;
 uint32_t recvBase = SEQ_NUM_MIN;
 std::map<uint32_t, NetworkPacket> sendBuffer{};                 // Packets awaiting ACK
 std::map<uint32_t, NetworkPacket> recvBuffer{};                 // Stores received packets
+std::set<uint32_t> ackedPackets;                                // Tracks received ACKs
 std::map<uint32_t, uint64_t> timers{};                          // Timeout tracking
 std::map<uint32_t, sockaddr_in> clientTargetAddresses{};        // used for NetworkType::SERVER
 sockaddr_in serverTargetAddress{};                              // used for NetworkType::CLIENT
@@ -220,15 +221,14 @@ int ConnectToServer()
 	freeaddrinfo(udpInfo);
 
     // Send a REQ_CONNECT
-    std::cout << "Sending a request connection to server...";
+    std::cout << "Client is sending a request connection to server..." << std::endl;
     NetworkPacket requestConnectionSegment{};
     requestConnectionSegment.commandID = CommandID::REQ_CONNECT;
     requestConnectionSegment.flags = 0;
-    requestConnectionSegment.seqNumber = htonl(nextSeqNum);
+    requestConnectionSegment.seqNumber = htonl(sendBase); 
     requestConnectionSegment.dataLength = 0;
+
     SendPacket(udpClientSocket, serverTargetAddress, requestConnectionSegment);
-    sendBuffer[nextSeqNum] = requestConnectionSegment;
-    timers[nextSeqNum] = GetTimeNow();
 
     // Await for ack of sent segment
     AwaitAck();
@@ -242,53 +242,8 @@ int ConnectToServer()
 	return 0;
 }
 
-void AwaitAck() {
+void HandleConnectionRequest() {
 
-    std::map<uint32_t, uint64_t> accumulative_timers = timers;
-
-    while (true) {
-
-        // Retransmission
-        for (auto const [seqNum, timer] : timers) {
-            uint64_t now = GetTimeNow();
-            // The usual timeout
-            if (now - timer >= TIMEOUT_MS && accumulative_timers[seqNum] <= TIMEOUT_MS_MAX) {
-                if (SendPacket(udpClientSocket, serverTargetAddress, sendBuffer[seqNum])) {
-
-                    accumulative_timers[seqNum] += (now - timer);
-                }
-            } else if (accumulative_timers[seqNum] > TIMEOUT_MS_MAX) { 
-                // Receiver unresponsive
-                break;
-            }
-
-        }
-
-        // Receive ACK
-
-        struct sockaddr_in senderAddr;
-
-        NetworkPacket recvUdpSegment = ReceivePacket(udpClientSocket, senderAddr);
-
-        if (CompareSockaddr(senderAddr, serverTargetAddress)) {
-
-            // Check Flag and Seq Num
-            uint32_t seqNum = ntohl(recvUdpSegment.seqNumber);
-            uint8_t flag = recvUdpSegment.flags;
-
-            if (flag == 1) {
-
-                sendBuffer.erase(seqNum);
-                timers.erase(seqNum);
-                accumulative_timers.erase(seqNum);
-
-                if (seqNum == sendBase) {
-                    sendBase++;
-                }
-            }
-        } 
-        
-    }
 }
 
 void Disconnect()
@@ -307,9 +262,76 @@ void Disconnect()
 	WSACleanup();
 }
 
+// Note: weird quirk but only when sendBuffer is empty then the 
+// function ends and then host can continue sending new packets
+void AwaitAck() {
+
+    std::cout << "Client is awaiting an acknowledgment of sent packets..." << std::endl;
+    std::map<uint32_t, uint64_t> accumulative_timers = timers;
+
+    while (true) {
+
+        // Retransmission
+        for (auto const [seqNum, timer] : timers) {
+            uint64_t now = GetTimeNow();
+            // The usual timeout
+            if (now - timer >= TIMEOUT_MS && accumulative_timers[seqNum] <= TIMEOUT_MS_MAX) {
+                if (SendPacket(udpClientSocket, serverTargetAddress, sendBuffer[seqNum])) {
+
+                    accumulative_timers[seqNum] += (now - timer);
+                }
+            }
+            else if (accumulative_timers[seqNum] > TIMEOUT_MS_MAX) {
+                // Receiver unresponsive
+                break;
+            }
+
+        }
+
+        // Receive ACK
+        struct sockaddr_in senderAddr;
+
+        NetworkPacket recvUdpSegment = ReceivePacket(udpClientSocket, senderAddr);
+
+        if (CompareSockaddr(senderAddr, serverTargetAddress)) {
+
+            uint32_t seqNum = ntohl(recvUdpSegment.seqNumber);
+            uint8_t flag = recvUdpSegment.flags;
+
+            if (flag == 1) {
+
+                // Mark packet as acknowledged is within window size
+                if (sendBuffer.find(seqNum) != sendBuffer.end()) {
+                    ackedPackets.insert(seqNum);
+
+                    // Advance sendBase if possible
+                    while (ackedPackets.count(sendBase)) {
+                        std::cout << "Sliding window: removing " << sendBase << std::endl;
+                        sendBuffer.erase(sendBase);
+                        timers.erase(sendBase);
+                        ackedPackets.erase(sendBase);
+                        accumulative_timers.erase(sendBase);
+                        sendBase = (sendBase + 1) % SEQ_NUM_SPACE;
+                    }
+                }
+            }
+        }
+
+        // All sent packets within window were acknowledged
+        if (sendBuffer.empty()) {
+            break;
+        }
+
+    }
+}
+
+void SendAck() {
+
+}
+
 bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 {
-    if (sendBuffer.size() < SENDER_WIND_SIZE) {
+    if ((nextSeqNum % SEQ_NUM_SPACE == (sendBase + WIND_SIZE) % SEQ_NUM_SPACE)) {
 
         int sentBytes = sendto(socket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&address, sizeof(address));
 
@@ -323,14 +345,16 @@ bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet)
             // Update SR variables
             ++nextSeqNum;
             uint64_t now = GetTimeNow();
+            sendBuffer[packet.seqNumber] = packet;
             timers[packet.seqNumber] = now;
             return true;
 
         }
     
     }
-}
 
+    return true;
+}
 
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 {
@@ -353,19 +377,18 @@ bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2) {
         addr1.sin_addr.s_addr == addr2.sin_addr.s_addr);
 }
 
-
 void SendJoinRequest(SOCKET socket, sockaddr_in address) 
 {
-	NetworkPacket packet;
+	/*NetworkPacket packet;
 	packet.packetID = PacketID::JOIN_REQUEST;
 	packet.sourcePortNumber = port;
 	packet.destinationPortNumber = address.sin_port;
-	SendPacket(socket, address, packet);
+	SendPacket(socket, address, packet);*/
 }
 
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 {
-	if (packet.packetID == PacketID::JOIN_REQUEST) 
+	/*if (packet.packetID == PacketID::JOIN_REQUEST) 
 	{
 		std::cout << "Player [" << packet.sourcePortNumber << "] is joining the lobby." << std::endl;
 
@@ -374,7 +397,7 @@ void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 		responsePacket.sourcePortNumber = port;
 		responsePacket.destinationPortNumber = packet.sourcePortNumber;
 		SendPacket(socket, address, responsePacket);
-	}
+	}*/
 }
 
 void SendInput(SOCKET socket, sockaddr_in address) 

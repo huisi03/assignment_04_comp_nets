@@ -21,7 +21,7 @@
 #include <fstream>			// file stream
 #include <map>	            // map
 #include <mutex>			// mutex
-#include <vector>           // vector
+#include <set>              // set
 
 #undef WINSOCK_VERSION		// fix for macro redefinition
 #define WINSOCK_VERSION     2
@@ -36,10 +36,9 @@
 #define TIMEOUT_MS		    1000
 #define TIMEOUT_MS_MAX      10000
 
-#define SENDER_WIND_SIZE    4
-#define RECV_WIND_SIZE      4
+#define WIND_SIZE           4
 #define SEQ_NUM_MIN         0
-#define SEQ_NUM_MAX         7
+#define SEQ_NUM_SPACE       8
 
 #define PACKET_HEADER_SIZE  80
 
@@ -86,6 +85,7 @@ extern uint32_t nextSeqNum;
 extern uint32_t sendBase;
 extern uint32_t recvBase;
 extern std::map<uint32_t, NetworkPacket> sendBuffer;               // Packets awaiting ACK
+extern std::set<uint32_t> ackedPackets;                            // Tracks received ACKs
 extern std::map<uint32_t, NetworkPacket> recvBuffer;               // Stores received packets
 extern std::map<uint32_t, uint64_t> timers;                        // Timeout tracking
 extern std::map<uint32_t, sockaddr_in> clientTargetAddresses;      // used for NetworkType::SERVER to keep track of connect clients
@@ -108,7 +108,8 @@ int ConnectToServer();
 void Disconnect();
 
 void AwaitAck();
-void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+void SendAck();
+bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2);
 
