@@ -22,6 +22,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 
 extern float	g_dt;
 extern double	g_appTime;
+extern int		pFont; // this is for the font which is used to display the text. 
 
 // ---------------------------------------------------------------------------
 // includes
@@ -32,5 +33,7 @@ extern double	g_appTime;
 #include "GameStateMgr.h"			// game state manager
 #include "GameState_Asteroids.h"	// game state: asteroids
 #include "Collision.h"				// collision
+#include "GameState_Mainmenu.h"     //Main Menu
+#include <iostream>
 
-#endif
+#endif // CSD1130_MAIN_H_

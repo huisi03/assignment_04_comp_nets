@@ -25,6 +25,9 @@ void GameStateAsteroidsDraw(void);
 void GameStateAsteroidsFree(void);
 void GameStateAsteroidsUnload(void);
 
+unsigned long LoadHighScore();
+void SaveHighScore(unsigned long High_Score);
+
 // ---------------------------------------------------------------------------
 
 #endif // CSD1130_GAME_STATE_PLAY_H_

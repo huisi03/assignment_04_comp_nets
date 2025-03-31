@@ -14,11 +14,17 @@ Reproduction or disclosure of this file or its contents without the
 prior written consent of DigiPen Institute of Technology is prohibited.
  */
 /******************************************************************************/
-
+#define _CRT_SECURE_NO_WARNINGS
 #include "Network.h"
 #include "GameState_Asteroids.h"
 #include "GameStateMgr.h"
 #include "Collision.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctime>  // for date and time
+#include <cstdio>
+#include <cstring>
+
 
 /******************************************************************************/
 /*!
@@ -64,6 +70,10 @@ const float			SHIP_MAX_SPEED_BACKWARD = 50.0f;		// ship max speed backward
 const float			SHIP_DECCEL				= 10.0f;		// ship max speed forward
 
 const unsigned long ASTEROID_SCORE			= 100UL;		// score earned from destroying asteroid
+
+unsigned long       High_Score              = 0; 
+
+FILE* highscoreFile; 
 
 // -----------------------------------------------------------------------------
 enum TYPE
@@ -115,6 +125,12 @@ struct GameObjInst
 
 };
 
+// struct to hold the high score and timestamp
+struct HighScoreData {
+	unsigned long highScore;
+	char timestamp[20];  // Format: "YYYY-MM-DD HH:MM:SS"
+};
+
 /******************************************************************************/
 /*!
 	Static Variables
@@ -161,6 +177,58 @@ void				RenderText(AEVec2 position, f32 fontSize, char const* text);
 
 // functions to render images
 void				RenderImage(AEVec2 position, AEVec2 scale, AEGfxTexture* texture, AEGfxVertexList* mesh);
+
+
+// Function to load the high score
+unsigned long LoadHighScore()
+{
+	FILE* highscoreFile;
+	//unsigned long High_Score = 0; // Default value if file cannot be read
+
+	// Open the file in read mode
+	if (fopen_s(&highscoreFile, "Resources/HighScore.txt", "r") == 0)
+	{
+		// Read the high score from the file
+		if (fscanf_s(highscoreFile, "%lu", &High_Score) != 1)
+		{
+			printf("Failed to read high score.\n");
+		}
+		/*else {
+			std::cout << High_Score << std::endl;
+		}*/
+		fclose(highscoreFile); // Close the file after reading
+	}
+	else
+	{
+		printf("Failed to open the file for loading.\n");
+	}
+
+	return High_Score;
+}
+
+
+// Function to save the high score
+void SaveHighScore(unsigned long High_Score)
+{
+	FILE* highscoreFile;
+	// Open the file in write mode, creating it if it doesn't exist
+	fopen_s(&highscoreFile, "Resources/HighScore.txt", "w");
+
+	if (highscoreFile != NULL)
+	{
+		// Write the high score to the file
+		fprintf(highscoreFile, "%lu", High_Score);
+		// Close the file after writing
+		fclose(highscoreFile);
+
+		//printf("Saved High Score.\n");
+	}
+	else
+	{
+		printf("Failed to open the file for saving.\n");
+	}
+}
+
 
 /******************************************************************************/
 /*!
@@ -316,6 +384,7 @@ void GameStateAsteroidsInit(void)
 	// reset the score and the number of ships
 	sScore      = 0;
 	sShipLives  = SHIP_INITIAL_NUM;
+	unsigned long High_Score = LoadHighScore();  // Load the high score when the game starts 
 }
 
 /******************************************************************************/
@@ -710,6 +779,14 @@ void GameStateAsteroidsDraw(void)
 	// Renders text in game
 	AEVec2 pos;
 
+	// Check if we have a new high score
+	if (sScore > High_Score)
+	{
+		High_Score = sScore;
+		SaveHighScore(High_Score); // Save the new high score to the text file
+		printf("New High Score: %lu\n", High_Score);  // Print it in console 
+	}
+
 	if (sShipLives < 0)
 	{
 		sprintf_s(strBuffer, "Game Over");
@@ -733,7 +810,12 @@ void GameStateAsteroidsDraw(void)
 		sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
 		AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
 		RenderText(pos, 36, strBuffer);
+
+		sprintf_s(strBuffer, "High Score: %d", High_Score);
+		AEVec2Set(&pos, SCREEN_SIZE_X - 1300, -SCREEN_SIZE_Y + 75);
+		RenderText(pos, 36, strBuffer);
 	}
+
 }
 
 /******************************************************************************/
