@@ -58,9 +58,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::cout << "Processing Server..." << std::endl;
 		
 		sockaddr_in address{};
-		std::map<uint32_t, sockaddr_in> clients;
-		int clientsRequired = 1;
-		int clientCount = 0;
 
 		while (true)
 		{
@@ -108,9 +105,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	{
 		std::cout << "Processing Client..." << std::endl;
 		
-		SendJoinRequest(udpSocket, targetAddress);
+		SendJoinRequest(udpClientSocket, serverTargetAddress);
 
-		NetworkPacket responsePacket = ReceivePacket(udpSocket, targetAddress);
+		NetworkPacket responsePacket = ReceivePacket(udpClientSocket, serverTargetAddress);
 		if (responsePacket.destinationPortNumber == port && responsePacket.packetID == REQUEST_ACCEPTED)
 		{
 			std::cout << "Joined the lobby successfully!" << std::endl;

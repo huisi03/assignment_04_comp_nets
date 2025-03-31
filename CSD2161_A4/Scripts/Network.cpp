@@ -1,11 +1,23 @@
 #include "Network.h"
-#include "taskqueue.h"
 
 // Define
 NetworkType networkType = NetworkType::UNINITIALISED;
-sockaddr_in targetAddress;
-uint16_t port;
-SOCKET udpSocket;
+uint32_t nextSeqNum = SEQ_NUM_MIN;
+uint32_t sendBase = SEQ_NUM_MIN;
+uint32_t recvBase = SEQ_NUM_MIN;
+std::map<uint32_t, NetworkPacket> sendBuffer{};                 // Packets awaiting ACK
+std::map<uint32_t, NetworkPacket> recvBuffer{};                 // Stores received packets
+std::map<uint32_t, uint64_t> timers{};                          // Timeout tracking
+std::map<uint32_t, sockaddr_in> clientTargetAddresses{};        // used for NetworkType::SERVER
+sockaddr_in serverTargetAddress{};                              // used for NetworkType::CLIENT
+uint16_t serverPort{};                                          // used for NetworkType::CLIENT
+uint16_t clientPort{};                                          // used for NetworkType::SERVER
+SOCKET udpClientSocket = INVALID_SOCKET;                        // used for NetworkType::CLIENT
+SOCKET udpServerSocket = INVALID_SOCKET;                        // used for NetworkType::SERVER
+
+const std::string configFileRelativePath = "Resources/Configuration";
+const std::string configFileServerIp = "serverIp";
+const std::string configFileServerPort = "serverUdpPort";
 
 void AttachConsoleWindow()
 {
@@ -51,10 +63,21 @@ int InitialiseNetwork()
 int StartServer()
 {
 	// Get UDP Port Number
-	std::string portString;
-	std::cout << "Server UDP Port Number: ";
-	std::getline(std::cin, portString);
-	port = static_cast<uint16_t>(std::stoi(portString));
+    std::string portString{};
+    std::ifstream config_file(configFileRelativePath);
+    if (config_file.is_open()) {
+        std::string buffer{};
+        while (std::getline(std::cin, buffer)) {
+            std::string::size_type findIndex = buffer.find(configFileServerPort);
+            if (findIndex != std::string::npos) {
+                portString = buffer.substr(findIndex + configFileServerPort.size());
+                serverPort = static_cast<uint16_t>(std::stoi(portString));
+            }
+        }  
+    }
+    if (portString.empty()) {
+        return ERROR_CODE;
+    }
 
 	// Setup WSA data
 	WSADATA wsaData;
@@ -80,8 +103,8 @@ int StartServer()
 	}
 
 	// Create a UDP socket
-	udpSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
-	if (udpSocket == INVALID_SOCKET)
+	udpServerSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
+	if (udpServerSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
 		freeaddrinfo(udpInfo);
@@ -92,13 +115,13 @@ int StartServer()
 	// Create a sockaddr_in for binding
 	sockaddr_in bindAddress{};
 	bindAddress.sin_family = AF_INET;
-	bindAddress.sin_port = htons(port);
+	bindAddress.sin_port = htons(udpServerSocket);
 	bindAddress.sin_addr.s_addr = INADDR_ANY;
 
-	if (bind(udpSocket, (sockaddr*)&bindAddress, sizeof(bindAddress)) == SOCKET_ERROR)
+	if (bind(udpServerSocket, (sockaddr*)&bindAddress, sizeof(bindAddress)) == SOCKET_ERROR)
 	{
 		std::cerr << "bind() failed." << std::endl;
-		closesocket(udpSocket);
+		closesocket(udpServerSocket);
 		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
@@ -113,7 +136,7 @@ int StartServer()
 	std::cout << std::endl;
 	std::cout << "Server has been established" << std::endl;
 	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
-	std::cout << "Server UDP Port Number: " << port << std::endl;
+	std::cout << "Server UDP Port Number: " << serverPort << std::endl;
 	std::cout << std::endl;
 
 	freeaddrinfo(udpInfo);
@@ -123,22 +146,33 @@ int StartServer()
 
 int ConnectToServer()
 {
-	// Get IP Address
-	std::string serverIPAddress{};
-	std::cout << "Server IP Address: ";
-	std::getline(std::cin, serverIPAddress);
-
-	// Get UDP Server Port Number
-	std::string serverPortString;
-	std::cout << "Server UDP Port Number: ";
-	std::getline(std::cin, serverPortString);
-	uint16_t serverPort = static_cast<uint16_t>(std::stoi(serverPortString));
+    // Get IP Address & UDP Server Port Number
+    std::string serverIPAddress{};
+    std::string serverPortString{};
+    std::ifstream config_file(configFileRelativePath);
+    if (config_file.is_open()) {
+        std::string buffer{};
+        while (std::getline(std::cin, buffer)) {
+            std::string::size_type findIndex = buffer.find(configFileServerIp);
+            if (findIndex != std::string::npos) {
+                serverIPAddress = buffer.substr(findIndex + configFileServerIp.size());
+            }
+            findIndex = buffer.find(configFileServerPort);
+            if (findIndex != std::string::npos) {
+                serverPortString = buffer.substr(findIndex + configFileServerPort.size());
+                serverPort = static_cast<uint16_t>(std::stoi(serverPortString));
+            }
+        }
+    }
+    if (serverIPAddress.empty() || serverPortString.empty()) {
+        return ERROR_CODE;
+    }
 
 	// Get UDP Client Port Number
 	std::string portString;
 	std::cout << "Client UDP Port Number: ";
 	std::getline(std::cin, portString);
-	port = static_cast<uint16_t>(std::stoi(portString));
+	clientPort = static_cast<uint16_t>(std::stoi(portString));
 
 	// Setup WSA data
 	WSADATA wsaData;
@@ -164,8 +198,8 @@ int ConnectToServer()
 	}
 
 	// Create a UDP Socket
-	udpSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
-	if (udpSocket == INVALID_SOCKET)
+	udpClientSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
+	if (udpClientSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
 		WSACleanup();
@@ -173,37 +207,130 @@ int ConnectToServer()
 	}
 
 	// Store target address
-	targetAddress = *(reinterpret_cast<sockaddr_in*>(udpInfo->ai_addr));
+	serverTargetAddress = *(reinterpret_cast<sockaddr_in*>(udpInfo->ai_addr));
 
 	// Print server IP address and port number
 	std::cout << std::endl;
 	std::cout << "Client has been established" << std::endl;
 	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
 	std::cout << "Server UDP Port Number: " << serverPort << std::endl;
-	std::cout << "Client UDP Port Number: " << port << std::endl;
+	std::cout << "Client UDP Port Number: " << clientPort << std::endl;
 	std::cout << std::endl;
 
 	freeaddrinfo(udpInfo);
 
+    // Send a REQ_CONNECT
+    std::cout << "Sending a request connection to server...";
+    NetworkPacket requestConnectionSegment{};
+    requestConnectionSegment.commandID = CommandID::REQ_CONNECT;
+    requestConnectionSegment.flags = 0;
+    requestConnectionSegment.seqNumber = htonl(nextSeqNum);
+    requestConnectionSegment.dataLength = 0;
+    SendPacket(udpClientSocket, serverTargetAddress, requestConnectionSegment);
+    sendBuffer[nextSeqNum] = requestConnectionSegment;
+    timers[nextSeqNum] = GetTimeNow();
+
+    // Await for ack of sent segment
+    AwaitAck();
+
+    // If send buffer is still not empty return error:
+    // failed to connect to server
+    if (!sendBuffer.empty()) {
+        return ERROR_CODE;
+    }
+
 	return 0;
+}
+
+void AwaitAck() {
+
+    std::map<uint32_t, uint64_t> accumulative_timers = timers;
+
+    while (true) {
+
+        // Retransmission
+        for (auto const [seqNum, timer] : timers) {
+            uint64_t now = GetTimeNow();
+            // The usual timeout
+            if (now - timer >= TIMEOUT_MS && accumulative_timers[seqNum] <= TIMEOUT_MS_MAX) {
+                if (SendPacket(udpClientSocket, serverTargetAddress, sendBuffer[seqNum])) {
+
+                    accumulative_timers[seqNum] += (now - timer);
+                }
+            } else if (accumulative_timers[seqNum] > TIMEOUT_MS_MAX) { 
+                // Receiver unresponsive
+                break;
+            }
+
+        }
+
+        // Receive ACK
+
+        struct sockaddr_in senderAddr;
+
+        NetworkPacket recvUdpSegment = ReceivePacket(udpClientSocket, senderAddr);
+
+        if (CompareSockaddr(senderAddr, serverTargetAddress)) {
+
+            // Check Flag and Seq Num
+            uint32_t seqNum = ntohl(recvUdpSegment.seqNumber);
+            uint8_t flag = recvUdpSegment.flags;
+
+            if (flag == 1) {
+
+                sendBuffer.erase(seqNum);
+                timers.erase(seqNum);
+                accumulative_timers.erase(seqNum);
+
+                if (seqNum == sendBase) {
+                    sendBase++;
+                }
+            }
+        } 
+        
+    }
 }
 
 void Disconnect()
 {
-	shutdown(udpSocket, SD_SEND);
-	closesocket(udpSocket);
+    if (networkType == NetworkType::CLIENT) {
+
+        shutdown(udpClientSocket, SD_SEND);
+        closesocket(udpClientSocket);
+
+    } else if (networkType == NetworkType::SERVER) {
+
+        shutdown(udpServerSocket, SD_SEND);
+        closesocket(udpServerSocket);
+    }
+	
 	WSACleanup();
 }
 
-void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet)
+bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 {
-	int sentBytes = sendto(socket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&address, sizeof(address));
+    if (sendBuffer.size() < SENDER_WIND_SIZE) {
 
-	if (sentBytes == SOCKET_ERROR)
-	{
-		std::cerr << "Failed to send game data. Error: " << WSAGetLastError() << std::endl;
-	}
+        int sentBytes = sendto(socket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&address, sizeof(address));
+
+        if (sentBytes == SOCKET_ERROR) {
+
+            std::cerr << "Failed to send game data. Error: " << WSAGetLastError() << std::endl;
+            return false;
+
+        } else {
+
+            // Update SR variables
+            ++nextSeqNum;
+            uint64_t now = GetTimeNow();
+            timers[packet.seqNumber] = now;
+            return true;
+
+        }
+    
+    }
 }
+
 
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 {
@@ -219,6 +346,13 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 
 	return packet;
 }
+
+bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2) {
+    return (addr1.sin_family == addr2.sin_family &&
+        addr1.sin_port == addr2.sin_port &&
+        addr1.sin_addr.s_addr == addr2.sin_addr.s_addr);
+}
+
 
 void SendJoinRequest(SOCKET socket, sockaddr_in address) 
 {
@@ -245,17 +379,17 @@ void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 
 void SendInput(SOCKET socket, sockaddr_in address) 
 {
-	NetworkPacket packet;
+	/*NetworkPacket packet;
 	packet.packetID = PacketID::GAME_INPUT;
 	packet.sourcePortNumber = port;
 	packet.destinationPortNumber = address.sin_port;
 	strcpy_s(packet.data, "[PLAYER_INPUT_DATA]");
-	SendPacket(socket, address, packet);
+	SendPacket(socket, address, packet);*/
 }
 
 void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 {
-	if (packet.packetID == PacketID::GAME_INPUT)
+	/*if (packet.packetID == PacketID::GAME_INPUT)
 	{
 		std::cout << "Received input from Player [" << packet.sourcePortNumber << "]: " << packet.data << std::endl;
 
@@ -266,25 +400,31 @@ void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 		strcpy_s(responsePacket.data, "[GAME_STATE_DATA]");
 
 		SendPacket(socket, address, responsePacket);
-	}
+	}*/
 }
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address)
 {
-	NetworkPacket packet;
+	/*NetworkPacket packet;
 	packet.packetID = PacketID::GAME_STATE_START;
 	packet.sourcePortNumber = port;
 	packet.destinationPortNumber = address.sin_port;
-	SendPacket(socket, address, packet);
+	SendPacket(socket, address, packet);*/
 }
 
 void ReceiveGameStateStart(SOCKET socket) 
 {
-	sockaddr_in address{};
+	/*sockaddr_in address{};
 	NetworkPacket packet = ReceivePacket(socket, address);
 
 	if (packet.packetID == PacketID::GAME_STATE_START)
 	{
 		std::cout << "Game started. Initial game state: " << packet.data << std::endl;
-	}
+	}*/
+}
+
+uint64_t GetTimeNow() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch())
+        .count();
 }
