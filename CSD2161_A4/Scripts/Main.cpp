@@ -130,11 +130,13 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		while (true)
 		{
+			// For multiple client on the same computer
 			if (GetForegroundWindow() != clientWindow)
 			{
 				Sleep(10); // Small delay to avoid 100% CPU usage
 				continue;
 			}
+
 			NetworkPacket packet;
 
 			if (GetAsyncKeyState(VK_UP) & 0x8000)
@@ -171,7 +173,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			{
 				std::cout << "Received unknown packet from " << receivedPacket.sourcePortNumber << std::endl;
 			}
-			Sleep(10); // Small delay to avoid 100% CPU usage
 		}
 
 		Disconnect();
