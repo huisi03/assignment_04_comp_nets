@@ -56,13 +56,10 @@ void GameStateMainMenuUpdate(void) {
 	if (AEInputCheckTriggered(AEVK_P) && gameType == GameType::SINGLE_PLAYER) { // if 1 is triggered then it will go to level 1. 
 
 		gGameStateNext = GS_ASTEROIDS;
-	}
-	else if (AEInputCheckTriggered(AEVK_Q)) {
+	} else if (AEInputCheckTriggered(AEVK_Q)) {
 		gGameStateNext = GS_QUIT; // if Q is triggereed then it quits the game. 
     }
-    else if (AEInputCheckTriggered(AEVK_P) && gameType == GameType::MULTIPLAYER) {
 
-    }
 }
 
 

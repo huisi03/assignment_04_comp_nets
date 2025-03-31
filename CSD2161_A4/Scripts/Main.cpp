@@ -21,11 +21,11 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 
 // ---------------------------------------------------------------------------
 // Globals
-float	 g_dt;
-double	 g_appTime;
+float	    g_dt;
+double	    g_appTime;
 int			pFont; // this is for the text
 const int	Fontsize = 25; // size of the text
-GameType gameType;
+GameType    gameType;
 
 void BeginGameLoop(HINSTANCE instanceH, int show);
 
@@ -66,51 +66,52 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		std::cout << "Processing Server..." << std::endl;
 
-		/*while (true)
+        sockaddr_in address{};
+        int clientsRequired = 4;
+
+		while (true)
 		{
 
-            // Handle client connection request
+			NetworkPacket packet = ReceivePacket(udpServerSocket, address);
 
-            // Handle client request to start game
+            if (packet.commandID == REQ_CONNECT) {
 
+                HandleConnectionRequest(udpServerSocket, address, packet);
+            }
 
-			//NetworkPacket packet = ReceivePacket(udpSocket, address);
+			if (packet.commandID == REQ_GAME_START) {
 
-			//if (packet.packetID == JOIN_REQUEST)
-			//{
-			//	if (clientCount == clientsRequired && clients.count(packet.sourcePortNumber) == false)
-			//	{
-			//		// ignore request, lobby is full
-			//		continue;
-			//	}
+                if (clientTargetAddresses.size() == clientsRequired)
+                {
+                    // ignore request, lobby is full
+                    continue;
+                }
 
-			//	HandleJoinRequest(udpSocket, address, packet);
+                HandleJoinRequest(udpServerSocket, address, packet);
+			}
 
-			//	if (clients.count(packet.sourcePortNumber) == false)
-			//	{
-			//		clients[packet.sourcePortNumber] = address;
-			//		++clientCount;
-			//	}
+            if (packet.commandID == REQ_QUIT) {
+                HandleQuitRequest(udpServerSocket, address, packet);
+            }
 
-			//	if (clientCount == clientsRequired)
-			//	{
-			//		for (auto [p, addr] : clients)
-			//		{
-			//			SendGameStateStart(udpSocket, addr);
-			//		}
+			if (clientsJoiningGame.size() == clientsRequired)
+			{
+				for (sockaddr_in const addr : clientsJoiningGame)
+				{
+					SendGameStateStart(udpServerSocket, addr);
+				}
 
-			//		while (true)
-			//		{
-			//			NetworkPacket gamePacket = ReceivePacket(udpSocket, address);
-			//			HandlePlayerInput(udpSocket, address, gamePacket);
-			//		}
-			//	}
-			//}
-			//else
-			//{
-			//	std::cout << "Received unknown packet from " << packet.sourcePortNumber << std::endl;
-			//}
-		}*/
+				while (true)
+				{
+                    BeginGameLoop(instanceH, show);
+                    break;
+					//NetworkPacket gamePacket = ReceivePacket(udpSocket, address);
+					//HandlePlayerInput(udpSocket, address, gamePacket);
+				}
+			}
+			
+
+		}
 
 		Disconnect();
 	}
@@ -120,40 +121,44 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		std::cout << "Processing Client..." << std::endl;
 
-        // Await RSP_CONNECT from server 
-		
         // Send join request REQ_GAME_START upon pressing "L"
+        if (AEInputCheckTriggered(AEVK_L) && gGameStateCurr == GS_MAINMENU) {
 
+            uint32_t seqNum = SendJoinRequest(udpClientSocket, serverTargetAddress);
 
-		//SendJoinRequest(udpClientSocket, serverTargetAddress);
+            if (seqNum != SEQ_NUM_SPACE) {
 
-		/*NetworkPacket responsePacket = ReceivePacket(udpClientSocket, serverTargetAddress);
-		if (responsePacket.destinationPortNumber == port && responsePacket.packetID == REQUEST_ACCEPTED)
-		{
-			std::cout << "Joined the lobby successfully!" << std::endl;
-			std::cout << "Waiting for lobby to start..." << std::endl;
-		}
-		else
-		{
-			std::cerr << "Failed to join lobby" << std::endl;
-		}*/
+                if (ReceiveJoinAck(seqNum)) {
 
-		//ReceiveGameStateStart(udpSocket);
+                    std::cout << "Joined the lobby successfully!" << std::endl;
+                    std::cout << "Waiting for lobby to start..." << std::endl;
 
-		/*while (true)
-		{
-			SendInput(udpSocket, targetAddress);
+                    ReceiveGameStateStart(udpClientSocket);
 
-			NetworkPacket packet = ReceivePacket(udpSocket, targetAddress);
-			if (packet.packetID == GAME_STATE_UPDATE)
-			{
-				std::cout << "Game state updated: " << packet.data << std::endl;
-			}
-			else
-			{
-				std::cout << "Received unknown packet from " << packet.sourcePortNumber << std::endl;
-			}
-		}*/
+                    while (true) 
+                    {
+                        BeginGameLoop(instanceH, show);
+                        break;
+                        /*SendInput(udpSocket, targetAddress);
+
+                        NetworkPacket packet = ReceivePacket(udpSocket, targetAddress);
+                        if (packet.packetID == GAME_STATE_UPDATE)
+                        {
+                            std::cout << "Game state updated: " << packet.data << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "Received unknown packet from " << packet.sourcePortNumber << std::endl;
+                        }*/
+                    }
+
+                }
+                else
+                {
+                    std::cerr << "Failed to join lobby" << std::endl;
+                }
+            }
+        }
 
 		Disconnect();
 	}

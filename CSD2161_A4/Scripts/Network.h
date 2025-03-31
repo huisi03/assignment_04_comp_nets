@@ -22,6 +22,7 @@
 #include <map>	            // map
 #include <mutex>			// mutex
 #include <set>              // set
+#include <vector>           // vector
 
 #undef WINSOCK_VERSION		// fix for macro redefinition
 #define WINSOCK_VERSION     2
@@ -55,9 +56,8 @@ enum CommandID
 {
     REQ_QUIT = 0x01,
     REQ_CONNECT = 0x02,
-    RSP_CONNECT = 0x03,
-    REQ_GAME_START = 0x04,
-    RSP_GAME_START = 0x05,
+    REQ_GAME_START = 0x03,
+    RSP_GAME_START = 0x04,
     INPUT_MOVE = 0x10,
     INPUT_STOP = 0x11,
     INPUT_SHOOT = 0x12,
@@ -73,7 +73,7 @@ enum CommandID
 struct NetworkPacket
 {
     uint8_t commandID = UNKNOWN;
-    uint8_t flags;
+    uint8_t flags = 0;
     uint32_t seqNumber;
     uint32_t dataLength = 0;
     char data[DEFAULT_BUFLEN]{ 0 };
@@ -87,8 +87,9 @@ extern uint32_t recvBase;
 extern std::map<uint32_t, NetworkPacket> sendBuffer;               // Packets awaiting ACK
 extern std::set<uint32_t> ackedPackets;                            // Tracks received ACKs
 extern std::map<uint32_t, NetworkPacket> recvBuffer;               // Stores received packets
-extern std::map<uint32_t, uint64_t> timers;                        // Timeout tracking
-extern std::map<uint32_t, sockaddr_in> clientTargetAddresses;      // used for NetworkType::SERVER to keep track of connect clients
+extern std::map<uint32_t, uint64_t> timers;                        // Timeout tracking for packets waiting to be ACK-ed
+extern std::vector<sockaddr_in> clientTargetAddresses;             // used for NetworkType::SERVER to keep track of connect clients
+extern std::vector<sockaddr_in> clientsJoiningGame;                // used for NetworkType::SERVER to keep track of clients req to join
 extern sockaddr_in serverTargetAddress;                            // used for NetworkType::CLIENT
 extern uint16_t serverPort;                                        // used for NetworkType::CLIENT
 extern uint16_t clientPort;                                        // used for NetworkType::SERVER
@@ -108,17 +109,26 @@ int ConnectToServer();
 void Disconnect();
 
 void AwaitAck();
-void SendAck();
-bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+uint32_t SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2);
 
-void SendJoinRequest(SOCKET socket, sockaddr_in address);
+// REQ_QUIT
+void SendQuitRequest(SOCKET socket, sockaddr_in address);
+void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+
+// REQ_CONNECT
+void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+bool ReceiveJoinAck(uint32_t seqNumAck);
+
+// REQ_GAME_START
+uint32_t SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendInput(SOCKET socket, sockaddr_in address);
 void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
+// RSP_GAME_START
 void SendGameStateStart(SOCKET socket, sockaddr_in address);
 void ReceiveGameStateStart(SOCKET socket);
 
