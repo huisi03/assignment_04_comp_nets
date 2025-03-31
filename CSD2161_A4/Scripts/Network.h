@@ -95,6 +95,7 @@ extern uint16_t serverPort;                                        // used for N
 extern uint16_t clientPort;                                        // used for NetworkType::SERVER
 extern SOCKET udpClientSocket;                                     // used for NetworkType::CLIENT
 extern SOCKET udpServerSocket;                                     // used for NetworkType::SERVER
+extern bool is_client_disconnect;
 
 extern const std::string configFileRelativePath;
 extern const std::string configFileServerIp;
@@ -111,27 +112,22 @@ void Disconnect();
 void AwaitAck();
 uint32_t SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
-bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2);
 
-// REQ_QUIT
 void SendQuitRequest(SOCKET socket, sockaddr_in address);
 void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
-// REQ_CONNECT
 void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
-bool ReceiveJoinAck(uint32_t seqNumAck);
 
-// REQ_GAME_START
-uint32_t SendJoinRequest(SOCKET socket, sockaddr_in address);
+bool SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendInput(SOCKET socket, sockaddr_in address);
 void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
-// RSP_GAME_START
 void SendGameStateStart(SOCKET socket, sockaddr_in address);
 void ReceiveGameStateStart(SOCKET socket);
 
+// Helper functions
 uint64_t GetTimeNow();
-
+bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2);
 #endif
