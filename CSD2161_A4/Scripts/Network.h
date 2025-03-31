@@ -110,7 +110,7 @@ int ConnectToServer();
 void Disconnect();
 
 void AwaitAck();
-uint32_t SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 
 void SendQuitRequest(SOCKET socket, sockaddr_in address);

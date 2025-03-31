@@ -28,7 +28,7 @@ const int	Fontsize = 25; // size of the text
 GameType    gameType;
 
 void BeginGameLoop(HINSTANCE instanceH, int show);
-void ProcessClientInput();
+void ProcessMultiplayerClientInput();
 
 /******************************************************************************/
 /*!
@@ -71,8 +71,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		while (true)
 		{
-            std::cout << "Number of clients connected: " << clientTargetAddresses.size() << std::endl;
-
 			NetworkPacket packet = ReceivePacket(udpServerSocket, address);
 
             if (packet.commandID == REQ_CONNECT) {
@@ -106,8 +104,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                     if (clientTargetAddresses.size() == 0) {
                         break;
                     }
-					//NetworkPacket gamePacket = ReceivePacket(udpSocket, address);
-					//HandlePlayerInput(udpSocket, address, gamePacket);
 				}
 			}
 			
@@ -125,18 +121,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
         while (!is_client_disconnect)
         {
             BeginGameLoop(instanceH, show);
-
-            /*SendInput(udpSocket, targetAddress);
-
-            NetworkPacket packet = ReceivePacket(udpSocket, targetAddress);
-            if (packet.packetID == GAME_STATE_UPDATE)
-            {
-                std::cout << "Game state updated: " << packet.data << std::endl;
-            }
-            else
-            {
-                std::cout << "Received unknown packet from " << packet.sourcePortNumber << std::endl;
-            }*/
         }
 
 		Disconnect();
@@ -159,7 +143,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	FreeConsoleWindow();
 }
 
-void ProcessClientInput() {
+void ProcessMultiplayerClientInput() {
 
     // Send join request REQ_GAME_START upon pressing "L"
 
@@ -228,7 +212,7 @@ void BeginGameLoop(HINSTANCE instanceH, int show) {
 
             if (gameType == GameType::MULTIPLAYER) {
 
-                ProcessClientInput();
+                ProcessMultiplayerClientInput();
             }
 
             GameStateUpdate(); // update current game state
