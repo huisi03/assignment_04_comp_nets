@@ -120,3 +120,7 @@ void LoadLeaderboard(char const* filename = LEADERBOARD_FILE_NAME);
 // Function to retrieve a list of the top players from the leaderboard, formatted as strings
 // It returns a vector of strings, each containing a player's name, score, and timestamp
 std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount = 5);
+
+// Function to apply a correction of the object's current value with the expected value on
+// the network side
+void ApplySmoothCorrection(AEVec2& current, AEVec2 expected, float smoothingFactor = 0.3f, float maxCorrection = 0.5f);

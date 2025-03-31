@@ -24,6 +24,21 @@ NetworkGameState currentGameState;
 std::mutex leaderboardMutex;
 NetworkLeaderboard leaderboard;
 
+// Test Case
+// Set network object with identifier 100, position, velocity, and scale
+//	SetNetworkObject(100, { 10, 20 }, { 30, 40 }, { 50, 60 });
+//	
+//	// Variables to hold the object data
+//	AEVec2 pos, vel, sca;
+//	
+//	// Get the network object data for identifier 100
+//	GetNetworkObject(100, pos, vel, sca);
+//	
+//	// Print the position, velocity, and scale
+//	std::cout << "Position: (" << pos.x << ", " << pos.y << "), "
+//			  << "Velocity: (" << vel.x << ", " << vel.y << "), "
+//			  << "Scale: (" << sca.x << ", " << sca.y << ")"
+//			  << std::endl;
 bool SetNetworkObject(uint32_t identifier, AEVec2 const& position, AEVec2 const& velocity, AEVec2 const& scale)
 {
 	// Mutex lock for synchronisation
@@ -133,6 +148,13 @@ bool GetNetworkPlayerData(uint32_t identifier, uint32_t& score, uint32_t& lives)
 	return false;
 }
 
+// Test Case
+// // Can rerun and change values to constantly add new scores to the lsit
+// LoadLeaderboard();
+// AddScoreToLeaderboard(0, "Test", 1000, "PLACEHOLDER");
+// AddScoreToLeaderboard(1, "Test2", 2000, "PLACEHOLDER");
+// SaveLeaderboard();
+
 bool AddScoreToLeaderboard(uint32_t identifier, char const* name, uint32_t score, char const* timestamp)
 {
 	// Mutex lock for synchronisation
@@ -232,4 +254,51 @@ std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount)
 	}
 
 	return topScores;
+}
+
+// Test Case
+//	AEVec2 playerPos = { 10.0f, 5.0f };
+//	AEVec2 playerVel = { 1.0f, 0.5f };
+//	
+//	AEVec2 serverPos = { 12.0f, 6.0f };
+//	AEVec2 serverVel = { 1.2f, 0.4f };
+//	
+//	for (int x = 0; x < 10; ++x)
+//	{
+//		// Server side
+//		serverPos.x += serverVel.x;
+//		serverPos.y += serverVel.y;
+//	
+//		// Client side
+//		playerPos.x += playerVel.x;
+//		playerPos.y += playerVel.y;
+//	
+//		std::cout << "Current:" << playerPos.x << ',' << playerPos.y << std::endl;
+//	
+//		// Apply correction for client
+//		ApplySmoothCorrection(playerPos, serverPos);
+//		ApplySmoothCorrection(playerVel, serverVel);
+//	
+//		// Results
+//		std::cout << "Corrected:" << playerPos.x << ',' << playerPos.y << std::endl;
+//		std::cout << "Expected:" << serverPos.x << ',' << serverPos.y << std::endl;
+//	}
+//	
+//	// Final results
+//	std::cout << "================================" << std::endl;
+//	std::cout << "Current:" << playerPos.x << ',' << playerPos.y << std::endl;
+//	std::cout << "Expected:" << serverPos.x << ',' << serverPos.y << std::endl;
+//	std::cout << "================================" << std::endl;
+void ApplySmoothCorrection(AEVec2& current, AEVec2 expected, float smoothingFactor, float maxCorrection)
+{
+	// Calculated correction required to match expected
+	AEVec2 correction = AEVec2{ (expected.x - current.x) * smoothingFactor, (expected.y - current.y) * smoothingFactor };
+
+	// Clamp correction
+	correction.x = (correction.x < -maxCorrection) ? -maxCorrection : (correction.x > maxCorrection) ? maxCorrection : correction.x;
+	correction.y = (correction.y < -maxCorrection) ? -maxCorrection : (correction.y > maxCorrection) ? maxCorrection : correction.y;
+
+	// Apply correction
+	current.x += correction.x;
+	current.y += correction.y;
 }
