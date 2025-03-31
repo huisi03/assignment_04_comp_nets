@@ -21,6 +21,8 @@
 #include <fstream>			// file stream
 #include <map>	            // map
 #include <mutex>			// mutex
+#include <unordered_map>    // unordered map
+#include "../Math.h"           // Math
 
 #undef WINSOCK_VERSION		// fix for macro redefinition
 #define WINSOCK_VERSION     2
@@ -61,6 +63,14 @@ enum InputKey
     SPACE
 };
 
+enum Datatype
+{
+    PLAYER,
+    BULLET,
+    ASTEROID,
+    SCORE
+};
+
 struct NetworkPacket
 {
     NetworkPacket()
@@ -72,8 +82,21 @@ struct NetworkPacket
     uint16_t sourcePortNumber;
     uint16_t destinationPortNumber;
     char data[DEFAULT_BUFLEN];
+};
 
+struct PlayerData
+{
+    float posX, posY;      // Position
+    float scaleX, scaleY;  // Scale
+    float velX, velY;      // Velocity (defaults to 0)
+    float rotation;        // Rotation (defaults to 0)
 
+    // Default constructor (needed for std::map)
+    PlayerData() : posX(0), posY(0), scaleX(0), scaleY(0), velX(0), velY(0), rotation(0) {}
+
+    // Constructor: Initializes pos and scale, defaults velocity and rotation to 0
+    PlayerData(float x, float y, float sx, float sy)
+        : posX(x), posY(y), scaleX(sx), scaleY(sy), velX(0.0f), velY(0.0f), rotation(0.0f) {}
 };
 
 // Global variables
@@ -93,14 +116,21 @@ void Disconnect();
 void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 
+void PackPlayerData(NetworkPacket& packet, const PlayerData& player);
+void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player);
+
 void SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendInput(SOCKET socket, sockaddr_in address);
-void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<uint16_t, PlayerData>& playersData);
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket packet, std::map<uint16_t, PlayerData>& playersData);
 
-void SendGameStateStart(SOCKET socket, sockaddr_in address);
-void ReceiveGameStateStart(SOCKET socket);
+void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData);
+void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData);
+
+void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients, std::map<uint16_t, PlayerData>& playersData);
+void ListenForUpdates(SOCKET udpSocket, sockaddr_in serverAddr, PlayerData& clientData);
 
 uint16_t GetClientPort();
 

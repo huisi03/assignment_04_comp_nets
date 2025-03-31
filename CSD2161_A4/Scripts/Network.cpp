@@ -1,12 +1,18 @@
 #include "Network.h"
 #include "taskqueue.h"
 
+
+
+
 // Define
 NetworkType networkType = NetworkType::UNINITIALISED;
 sockaddr_in targetAddress;
 uint16_t port;
 uint16_t clientPort;
 SOCKET udpSocket;
+std::mutex packetMutex;
+
+
 
 void AttachConsoleWindow()
 {
@@ -231,10 +237,30 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 	if (receivedBytes == SOCKET_ERROR)
 	{
 		std::cerr << "Failed to receive data. Error: " << WSAGetLastError() << std::endl;
+		packet.packetID = UINT16_MAX;
 	}
 
-
 	return packet;
+}
+
+// Pack the player data into the network packet for sending
+void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
+{
+	static_assert(sizeof(PlayerData) <= DEFAULT_BUFLEN, "PlayerData is too large for NetworkPacket data buffer!");
+
+	std::lock_guard<std::mutex> lock(packetMutex); // Lock the mutex to prevent race conditions
+
+	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
+	memcpy(packet.data, &player, sizeof(PlayerData)); // Copy struct into buffer
+	std::cout << "Unpacked: PosX=" << player.posX << ", PosY=" << player.posY
+		<< ", VelX=" << player.velX << ", VelY=" << player.velY << std::endl;
+}
+
+
+// Unpacking the data from the network packet into the player data
+void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player)
+{
+	memcpy(&player, packet.data, sizeof(PlayerData)); // Copy buffer back into struct
 }
 
 void SendJoinRequest(SOCKET socket, sockaddr_in address) 
@@ -275,44 +301,93 @@ uint16_t GetClientPort()
 	return clientPort;
 }
 
-void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet)
+void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<uint16_t, PlayerData>& playersData)
 {
-	NetworkPacket responsePacket;
-	responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
-	responsePacket.sourcePortNumber = port;
-	responsePacket.destinationPortNumber = packet.sourcePortNumber;
+	while (true)
+	{
+		sockaddr_in senderAddress{};
+		NetworkPacket gamePacket = ReceivePacket(serverUDPSocket, senderAddress);
+
+		if (gamePacket.packetID == UINT16_MAX) // Check for invalid packet
+			continue;
+
+		// Ensure this is from the correct client
+		if (gamePacket.sourcePortNumber != clientPortID)
+			continue;
+
+		// Ensure the player's data exists
+		if (playersData.count(clientPortID))
+		{
+			HandlePlayerInput(clientPortID, gamePacket, playersData);
+		}
+		else
+		{
+			std::cerr << "Warning: Received input from unregistered player " << clientPortID << std::endl;
+			return;
+		}
+	}
+}
+
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket packet, std::map<uint16_t, PlayerData>& playersData)
+{
+	float speed = 0;
 	if (packet.packetID == InputKey::NONE)
 	{
-		responsePacket.data[0] = '\0';
+		playersData[clientPortID].velX = 0;
+		playersData[clientPortID].velY = 0;
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		std::string text = "Up key from " + std::to_string(packet.sourcePortNumber);
-		strcpy_s(responsePacket.data, DEFAULT_BUFLEN, text.c_str());
+		float angle = degToRad(playersData[clientPortID].rotation);
+		playersData[clientPortID].velX = cosf(angle);
+		playersData[clientPortID].velY =  sinf(angle);
+		speed = 10;
+		//std::cout << "UP" << std::endl;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		std::string text = "Down key from " + std::to_string(packet.sourcePortNumber);
-		strcpy_s(responsePacket.data, DEFAULT_BUFLEN, text.c_str());
+		float angle = degToRad(playersData[clientPortID].rotation);
+		playersData[clientPortID].velX = -cosf(angle);
+		playersData[clientPortID].velY = -sinf(angle);
+		speed = 10;
+		//std::cout << "down" << std::endl;
+	}
+	else if (packet.packetID == InputKey::RIGHT)
+	{
+		playersData[clientPortID].rotation += 0.5;
+		//std::cout << "right" << std::endl;
+	}
+	else if (packet.packetID == InputKey::LEFT)
+	{
+		playersData[clientPortID].rotation -= 0.5;
+		//std::cout << "left" << std::endl;
+	}
+	else if (packet.packetID == InputKey::SPACE)
+	{
+
 	}
 	else
 	{
-		responsePacket.data[0] = '\0';
+		playersData[clientPortID].velX = 0;
+		playersData[clientPortID].velY = 0;
 	}
 
-	SendPacket(socket, address, responsePacket);
+	// **Apply velocity to update position**
+	playersData[clientPortID].posX += playersData[clientPortID].velX * 0.016f * speed;
+	playersData[clientPortID].posY += playersData[clientPortID].velY * 0.016f * speed;
 }
 
-void SendGameStateStart(SOCKET socket, sockaddr_in address)
+void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData)
 {
 	NetworkPacket packet;
 	packet.packetID = PacketID::GAME_STATE_START;
 	packet.sourcePortNumber = port;
 	packet.destinationPortNumber = address.sin_port;
+	PackPlayerData(packet, playerData);
 	SendPacket(socket, address, packet);
 }
 
-void ReceiveGameStateStart(SOCKET socket) 
+void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData) 
 {
 	sockaddr_in address{};
 	NetworkPacket packet = ReceivePacket(socket, address);
@@ -320,5 +395,44 @@ void ReceiveGameStateStart(SOCKET socket)
 	if (packet.packetID == PacketID::GAME_STATE_START)
 	{
 		std::cout << "Game started. Initial game state: " << packet.data << std::endl;
+		UnpackPlayerData(packet, clientData);
+		std::cout << "Initial Player Position: " << clientData.posX << " " << clientData.posY << std::endl;
+	}
+}
+
+
+void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients, std::map<uint16_t, PlayerData>& playersData)
+{
+	while (true)
+	{
+		Sleep(16); // Approx 60 updates per second (1000ms / 60)
+
+		for (auto& [portID, clientAddr] : clients)
+		{
+			if (playersData.count(portID) == 0)
+				continue; // Skip if no player data
+
+			NetworkPacket responsePacket;
+			responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
+			responsePacket.sourcePortNumber = port;			// Server's port
+			responsePacket.destinationPortNumber = portID;	// Client's port
+
+			PackPlayerData(responsePacket, playersData[portID]);
+			SendPacket(socket, clientAddr, responsePacket);
+		}
+	}
+}
+
+// Thread function to receive packets continuously
+void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& clientData)
+{
+	while (true)
+	{
+		NetworkPacket receivedPacket = ReceivePacket(socket, serverAddr);
+		if (receivedPacket.packetID == GAME_STATE_UPDATE)
+		{
+			UnpackPlayerData(receivedPacket, clientData);
+			std::cout << "New Position: " << clientData.posX << " " << clientData.posY << std::endl;
+		}
 	}
 }

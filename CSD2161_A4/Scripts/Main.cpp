@@ -16,6 +16,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 
 #include "Network.h"	// networking for multiplayer
 #include "Main.h"		// main headers
+#include <thread>
+#include <atomic>
 
 #include <memory>		// for memory leaks
 
@@ -25,6 +27,7 @@ float	 g_dt;
 double	 g_appTime;
 int			pFont; // this is for the text
 const int	Fontsize = 25; // size of the text
+PlayerData clientData;									// on client side
 
 /******************************************************************************/
 /*!
@@ -61,11 +64,16 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::cout << "Processing Server..." << std::endl;
 		
 		sockaddr_in address{};
-		std::map<uint32_t, sockaddr_in> clients;
+		std::map<uint16_t, sockaddr_in> clients;
+		std::map<uint16_t, PlayerData> playersData;
+		std::unordered_map<uint16_t, std::thread> clientThreads;
+
 		int clientsRequired = 2;
 		int clientCount = 0;
 
-		while (true)
+		bool gameStarted = false; // Add a flag
+
+		while (!gameStarted)
 		{
 			NetworkPacket packet = ReceivePacket(udpSocket, address);
 
@@ -79,23 +87,54 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 				HandleJoinRequest(udpSocket, address, packet);
 
+				// Check if the client is in the map already
 				if (clients.count(packet.sourcePortNumber) == false)
 				{
+					// Add the client port to IP to map
 					clients[packet.sourcePortNumber] = address;
 					++clientCount;
+
+					// Create the player data and store it with the port number as key
+					switch (clientCount)
+					{
+						case 1:
+						{
+							float pos = 100.f;
+							float scale = 16.f;
+
+							playersData.emplace(packet.sourcePortNumber, PlayerData(pos, pos, scale, scale));
+							break;
+						}
+						case 2:
+						{
+							float pos = 200.f;
+							float scale = 16.f;
+
+							playersData.emplace(packet.sourcePortNumber, PlayerData(pos, pos, scale, scale));
+							break;
+						}
+					}
+					std::cout << "Num Players: " << playersData.size() << std::endl;
 				}
 
+				// Can start game when players is max
 				if (clientCount == clientsRequired)
 				{
-					for (auto [p, addr] : clients)
-					{
-						SendGameStateStart(udpSocket, addr);
-					}
+					// Stop accepting new clients
+					gameStarted = true; 
 
-					while (true)
+					for (auto& [p, addr] : clients)
 					{
-						NetworkPacket gamePacket = ReceivePacket(udpSocket, address);
-						HandlePlayerInput(udpSocket, address, gamePacket);
+						if (playersData.count(p)) // Check if key 'p' exists in the map
+						{
+							SendGameStateStart(udpSocket, addr, playersData[p]);
+							// Start a thread for each client
+							clientThreads[p] = std::thread(HandleClientInput, udpSocket, p, std::ref(playersData));
+						}
+						else
+						{
+							std::cerr << "Player " << p << " not found in playersData!" << std::endl;
+						}
 					}
 				}
 			}
@@ -105,6 +144,15 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			}
 		}
 
+		std::thread gameStateThread(BroadcastGameState, udpSocket, std::ref(clients), std::ref(playersData));
+		gameStateThread.detach(); // Run in the background
+
+		// After game starts, wait for all threads to finish
+		for (auto& [p, thread] : clientThreads)
+		{
+			if (thread.joinable())
+				thread.join();
+		}
 		Disconnect();
 	}
 	else if (networkType == NetworkType::CLIENT)
@@ -124,7 +172,11 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			std::cerr << "Failed to join lobby" << std::endl;
 		}
 
-		ReceiveGameStateStart(udpSocket);
+		ReceiveGameStateStart(udpSocket, clientData);
+
+		// Start the background thread for listening to game state updates
+		std::thread receiveThread(ListenForUpdates, udpSocket, targetAddress, std::ref(clientData));
+		receiveThread.detach(); // Detach it to run in background
 
 		HWND clientWindow = GetConsoleWindow();
 
@@ -137,41 +189,21 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 				continue;
 			}
 
+			// Handle input
 			NetworkPacket packet;
+			packet.packetID = InputKey::NONE;
 
-			if (GetAsyncKeyState(VK_UP) & 0x8000)
-			{
-				std::cout << "UP" << std::endl;
-				packet.packetID = InputKey::UP;
-				strcpy_s(packet.data, "Up");
-			}
-			else if (GetAsyncKeyState(VK_DOWN) & 0x8000)
-			{
-				std::cout << "Down" << std::endl;
-				packet.packetID = InputKey::DOWN;
-				strcpy_s(packet.data, "Down");
-			}
-			else
-			{
+			if (GetAsyncKeyState(VK_UP) & 0x8000)      packet.packetID = InputKey::UP;
+			else if (GetAsyncKeyState(VK_DOWN) & 0x8000) packet.packetID = InputKey::DOWN;
+			else if (GetAsyncKeyState(VK_LEFT) & 0x8000) packet.packetID = InputKey::LEFT;
+			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
+			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
 
-				packet.packetID = InputKey::NONE;
-			}
-
-			packet.sourcePortNumber = GetClientPort();
-			packet.destinationPortNumber = targetAddress.sin_port;
-			SendPacket(udpSocket, targetAddress, packet);
-
-			NetworkPacket receivedPacket = ReceivePacket(udpSocket, targetAddress);
-			if (receivedPacket.packetID == GAME_STATE_UPDATE)
+			if (packet.packetID != InputKey::NONE) // Send input only when necessary
 			{
-				if (!std::string(receivedPacket.data).empty())
-				{
-					std::cout << "Game state updated: " << receivedPacket.data << std::endl;
-				}
-			}
-			else
-			{
-				std::cout << "Received unknown packet from " << receivedPacket.sourcePortNumber << std::endl;
+				packet.sourcePortNumber = GetClientPort();
+				packet.destinationPortNumber = targetAddress.sin_port;
+				SendPacket(udpSocket, targetAddress, packet);
 			}
 		}
 
