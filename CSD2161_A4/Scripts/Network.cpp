@@ -248,8 +248,6 @@ void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
 {
 	static_assert(sizeof(PlayerData) <= DEFAULT_BUFLEN, "PlayerData is too large for NetworkPacket data buffer!");
 
-	std::lock_guard<std::mutex> lock(packetMutex); // Lock the mutex to prevent race conditions
-
 	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
 	memcpy(packet.data, &player, sizeof(PlayerData)); // Copy struct into buffer
 	std::cout << "Unpacked: PosX=" << player.posX << ", PosY=" << player.posY
@@ -305,60 +303,77 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 {
 	while (true)
 	{
-		sockaddr_in senderAddress{};
-		NetworkPacket gamePacket = ReceivePacket(serverUDPSocket, senderAddress);
+		fd_set readSet;
+		FD_ZERO(&readSet);
+		FD_SET(serverUDPSocket, &readSet);
 
-		if (gamePacket.packetID == UINT16_MAX) // Check for invalid packet
-			continue;
+		timeval timeout{};
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 10000; // 10ms timeout
 
-		// Ensure this is from the correct client
-		if (gamePacket.sourcePortNumber != clientPortID)
-			continue;
+		int activity = select(0, &readSet, nullptr, nullptr, &timeout);
 
-		// Ensure the player's data exists
-		if (playersData.count(clientPortID))
+		if (activity > 0) // Data available
 		{
-			HandlePlayerInput(clientPortID, gamePacket, playersData);
+			sockaddr_in senderAddress{};
+			NetworkPacket gamePacket = ReceivePacket(serverUDPSocket, senderAddress);
+
+			if (gamePacket.packetID == UINT16_MAX) // Check for invalid packet
+				continue;
+
+			// Ensure this is from the correct client
+			if (gamePacket.sourcePortNumber != clientPortID)
+				continue;
+
+			// Ensure the player's data exists
+			if (playersData.count(clientPortID))
+			{
+				HandlePlayerInput(clientPortID, gamePacket, playersData);
+			}
+			else
+			{
+				std::cerr << "Warning: Received input from unregistered player " << clientPortID << std::endl;
+				return;
+			}
 		}
-		else
-		{
-			std::cerr << "Warning: Received input from unregistered player " << clientPortID << std::endl;
-			return;
-		}
+
+		// Small sleep to prevent CPU from running at 100%
+		Sleep(1);
 	}
 }
 
 void HandlePlayerInput(uint16_t clientPortID, NetworkPacket packet, std::map<uint16_t, PlayerData>& playersData)
 {
-	float speed = 0;
-	if (packet.packetID == InputKey::NONE)
-	{
-		playersData[clientPortID].velX = 0;
-		playersData[clientPortID].velY = 0;
-	}
-	else if (packet.packetID == InputKey::UP)
+	
+	if (packet.packetID == InputKey::UP)
 	{
 		float angle = degToRad(playersData[clientPortID].rotation);
-		playersData[clientPortID].velX = cosf(angle);
-		playersData[clientPortID].velY =  sinf(angle);
-		speed = 10;
+		float speed = 10; // Ensure speed is always applied
+
+		playersData[clientPortID].velX = cosf(angle) * speed;
+		playersData[clientPortID].velY = sinf(angle) * speed;
 		//std::cout << "UP" << std::endl;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
 		float angle = degToRad(playersData[clientPortID].rotation);
-		playersData[clientPortID].velX = -cosf(angle);
-		playersData[clientPortID].velY = -sinf(angle);
-		speed = 10;
+		float speed = 10;
+
+		playersData[clientPortID].velX = -cosf(angle) * speed;
+		playersData[clientPortID].velY = -sinf(angle) * speed;
 		//std::cout << "down" << std::endl;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
+		playersData[clientPortID].velX = 0;
+		playersData[clientPortID].velY = 0;
 		playersData[clientPortID].rotation += 0.5;
 		//std::cout << "right" << std::endl;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
+		playersData[clientPortID].velX = 0;
+		playersData[clientPortID].velY = 0;
 		playersData[clientPortID].rotation -= 0.5;
 		//std::cout << "left" << std::endl;
 	}
@@ -366,15 +381,11 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket packet, std::map<uin
 	{
 
 	}
-	else
-	{
-		playersData[clientPortID].velX = 0;
-		playersData[clientPortID].velY = 0;
-	}
 
-	// **Apply velocity to update position**
-	playersData[clientPortID].posX += playersData[clientPortID].velX * 0.016f * speed;
-	playersData[clientPortID].posY += playersData[clientPortID].velY * 0.016f * speed;
+	// Apply velocity to update position with real delta time
+	float deltaTime = 0.016f; // Replace with actual frame time in your loop
+	playersData[clientPortID].posX += playersData[clientPortID].velX * deltaTime;
+	playersData[clientPortID].posY += playersData[clientPortID].velY * deltaTime;
 }
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData)
@@ -417,8 +428,11 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients,
 			responsePacket.sourcePortNumber = port;			// Server's port
 			responsePacket.destinationPortNumber = portID;	// Client's port
 
-			PackPlayerData(responsePacket, playersData[portID]);
-			SendPacket(socket, clientAddr, responsePacket);
+			{
+				PackPlayerData(responsePacket, playersData[portID]);
+				SendPacket(socket, clientAddr, responsePacket);
+			}
+
 		}
 	}
 }

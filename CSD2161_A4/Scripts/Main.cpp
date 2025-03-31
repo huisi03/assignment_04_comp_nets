@@ -190,6 +190,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			}
 
 			// Handle input
+
 			NetworkPacket packet;
 			packet.packetID = InputKey::NONE;
 
