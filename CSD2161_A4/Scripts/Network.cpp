@@ -493,6 +493,7 @@ void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
         }
     );
     clientsJoiningGame.erase(it, clientsJoiningGame.end());
+    std::cout << "Number of clients connected: " << clientTargetAddresses.size() << std::endl;
 }
 
 
