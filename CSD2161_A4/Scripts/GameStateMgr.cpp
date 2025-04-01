@@ -15,6 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 
 #include "GameStateMgr.h"			// main header
 #include "GameState_Asteroids.h"	// game state
+#include "GameState_Lobby.h"
 #include <AEEngine.h>
 #include "Main.h"
 
