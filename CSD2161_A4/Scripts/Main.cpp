@@ -153,6 +153,8 @@ void ProcessMultiplayerClientInput() {
 
         std::cout << "Joined the lobby successfully!" << std::endl;
         std::cout << "Waiting for game to start..." << std::endl;
+
+        gGameStateNext = GS_LOBBY; // Switch to Lobby
         
     } else if (AEInputCheckTriggered(AEVK_Q)) {
 
