@@ -24,128 +24,69 @@ NetworkGameState currentGameState;
 std::mutex leaderboardMutex;
 NetworkLeaderboard leaderboard;
 
-// Test Case
-// Set network object with identifier 100, position, velocity, and scale
-//	SetNetworkObject(100, { 10, 20 }, { 30, 40 }, { 50, 60 });
-//	
-//	// Variables to hold the object data
-//	AEVec2 pos, vel, sca;
-//	
-//	// Get the network object data for identifier 100
-//	GetNetworkObject(100, pos, vel, sca);
-//	
-//	// Print the position, velocity, and scale
-//	std::cout << "Position: (" << pos.x << ", " << pos.y << "), "
-//			  << "Velocity: (" << vel.x << ", " << vel.y << "), "
-//			  << "Scale: (" << sca.x << ", " << sca.y << ")"
-//			  << std::endl;
-bool SetNetworkObject(uint32_t identifier, AEVec2 const& position, AEVec2 const& velocity, AEVec2 const& scale)
+void ClearNetworkData()
 {
-	// Mutex lock for synchronisation
 	std::lock_guard<std::mutex> lock(gameStateMutex);
-
-	// Set network data if it exist
-	for (uint32_t x = 0; x < currentGameState.objectCount; ++x)
-	{
-		if (currentGameState.objects[x].identifier == identifier)
-		{
-			currentGameState.objects[x].transform.position = position;
-			currentGameState.objects[x].transform.velocity = velocity;
-			currentGameState.objects[x].transform.scale = scale;
-			return true;
-		}
-	}
-
-	// Add new network object to game state
-	if (currentGameState.objectCount < MAX_NETWORK_OBJECTS)
-	{
-		uint32_t index = currentGameState.objectCount;
-		currentGameState.objects[index].identifier = identifier;
-		currentGameState.objects[index].transform.position = position;
-		currentGameState.objects[index].transform.velocity = velocity;
-		currentGameState.objects[index].transform.scale = scale;
-		++currentGameState.objectCount;
-		return true;
-	}
-
-	// If it reaches here, it means either there are too many objects in the scene
-	// in which you can increase the MAX_NETWORK_OBJECTS
-	// or too many duplicates of the same network object with different identifiers are found
-	std::cerr << "Maximum number of network objects is reached!" << std::endl;
-
-	return false;
+	currentGameState.sequenceNumber = 0;
+	currentGameState.playerCount = 0;
+	currentGameState.objectCount = 0;
 }
 
-bool GetNetworkObject(uint32_t identifier, AEVec2& position, AEVec2& velocity, AEVec2& scale)
+bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives)
 {
-	// Mutex lock for synchronisation
 	std::lock_guard<std::mutex> lock(gameStateMutex);
 
-	// Update object data if it exist
-	for (uint32_t x = 0; x < currentGameState.objectCount; ++x)
+	if (currentGameState.playerCount >= MAX_PLAYERS)
 	{
-		if (currentGameState.objects[x].identifier == identifier)
-		{
-			position = currentGameState.objects[x].transform.position;
-			velocity = currentGameState.objects[x].transform.velocity;
-			scale = currentGameState.objects[x].transform.scale;
-			return true;
-		}
+		// No space left
+		return false; 
 	}
 
-	// If it reaches here, it means the an object is destroyed on the client
-	// side but the server still has a copy of it
-	std::cerr << "Error: Object [" << identifier << "] is not synchronised with the server!" << std::endl;
+	NetworkPlayerData& newPlayer = currentGameState.playerData[currentGameState.playerCount];
+	newPlayer.identifier = identifier;
+	newPlayer.score = score;
+	newPlayer.lives = lives;
 
-	return false;
+	++currentGameState.playerCount;
+	return true;
 }
 
-bool SetNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives)
+bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale)
 {
-	// Mutex lock for synchronisation
 	std::lock_guard<std::mutex> lock(gameStateMutex);
 
-	// Set network player data if it exist
+	if (currentGameState.objectCount >= MAX_NETWORK_OBJECTS)
+	{
+		// No space left, increase MAX_NETWORK_OBJECTS if necessary
+		return false; 
+	}
+
+	NetworkObject& newObject = currentGameState.objects[currentGameState.objectCount];
+	newObject.type = type;
+	newObject.transform.position = position;
+	newObject.transform.velocity = velocity;
+	newObject.transform.rotation = rotation;
+	newObject.transform.scale = scale;
+
+	++currentGameState.objectCount;
+
+	return true;
+}
+
+NetworkPlayerData GetNetworkPlayerData(uint32_t identifier)
+{
+	std::lock_guard<std::mutex> lock(gameStateMutex);
+
 	for (uint32_t x = 0; x < currentGameState.playerCount; ++x)
 	{
 		if (currentGameState.playerData[x].identifier == identifier)
 		{
-			currentGameState.playerData[x].score = score;
-			currentGameState.playerData[x].lives = lives;
-			return true;
+			return currentGameState.playerData[x];
 		}
 	}
 
-	// If player not found, add new if there's space
-	if (currentGameState.playerCount < MAX_PLAYERS)
-	{
-		uint32_t index = currentGameState.playerCount++;
-		currentGameState.playerData[index].identifier = identifier;
-		currentGameState.playerData[index].score = score;
-		currentGameState.playerData[index].lives = lives;
-		return true;
-	}
-
-	return false;
-}
-
-bool GetNetworkPlayerData(uint32_t identifier, uint32_t& score, uint32_t& lives)
-{
-	// Mutex lock for synchronisation
-	std::lock_guard<std::mutex> lock(gameStateMutex);
-
-	// Update player data if it exist
-	for (uint32_t x = 0; x < currentGameState.playerCount; ++x)
-	{
-		if (currentGameState.playerData[x].identifier == identifier)
-		{
-			score = currentGameState.playerData[x].score;
-			lives = currentGameState.playerData[x].lives;
-			return true;
-		}
-	}
-
-	return false;
+	// return empty
+	return NetworkPlayerData();
 }
 
 // Test Case
@@ -291,14 +232,18 @@ std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount)
 //	std::cout << "================================" << std::endl;
 void ApplySmoothCorrection(AEVec2& current, AEVec2 expected, float smoothingFactor, float maxCorrection)
 {
+	ApplySmoothCorrection(current.x, expected.x, smoothingFactor, maxCorrection); 
+	ApplySmoothCorrection(current.y, expected.y, smoothingFactor, maxCorrection);
+}
+
+void ApplySmoothCorrection(float& current, float expected, float smoothingFactor, float maxCorrection)
+{
 	// Calculated correction required to match expected
-	AEVec2 correction = AEVec2{ (expected.x - current.x) * smoothingFactor, (expected.y - current.y) * smoothingFactor };
+	float correction = (expected - current) * smoothingFactor;
 
 	// Clamp correction
-	correction.x = (correction.x < -maxCorrection) ? -maxCorrection : (correction.x > maxCorrection) ? maxCorrection : correction.x;
-	correction.y = (correction.y < -maxCorrection) ? -maxCorrection : (correction.y > maxCorrection) ? maxCorrection : correction.y;
+	correction = (correction < -maxCorrection) ? -maxCorrection : (correction > maxCorrection) ? maxCorrection : correction;
 
 	// Apply correction
-	current.x += correction.x;
-	current.y += correction.y;
+	current += correction;
 }

@@ -29,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scripts\Collision.h" />
+    <ClInclude Include="Scripts\GameObjects.h" />
     <ClInclude Include="Scripts\GameStateList.h" />
     <ClInclude Include="Scripts\GameStateMgr.h" />
     <ClInclude Include="Scripts\GameState_Asteroids.h" />
