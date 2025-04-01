@@ -245,15 +245,20 @@ int ConnectToServer()
 
     if (SendPacket(udpClientSocket, serverTargetAddress, requestConnectionSegment, false)) {
         // Await for ack of sent segment
-        sockaddr_in address{};
-        NetworkPacket packet = ReceivePacket(udpClientSocket, address);
-    }
-    else {
+        while (true) {
+            sockaddr_in address{};
+            NetworkPacket packet = ReceivePacket(udpClientSocket, address);
+            if (packet.commandID != REQ_CONNECT) {
+                RetransmitPacket();
+            }
+            else {
+                break;
+            }
+        }
+        
+    } else {
         return ERROR_CODE;
     }
-
-
-    
 
 	return 0;
 }
@@ -294,15 +299,14 @@ void RetransmitPacket() {
             accumulative_timers[seqNum] += (now - timer);
             timers[seqNum] = now;  // Update retransmission time
 
-        }
-        else if (accumulative_timers[seqNum] >= TIMEOUT_MS_MAX) {
+        } else if (accumulative_timers[seqNum] >= TIMEOUT_MS_MAX) {
 
             // Receiver is unresponsive, exit loop
             std::cout << "Receiver unresponsive. Resetting connection.\n";
-            sendBuffer.erase(seqNum);
-            timers.erase(seqNum);
-            ackedPackets.erase(seqNum);
-            accumulative_timers.erase(seqNum);
+            sendBuffer.clear();
+            timers.clear();
+            ackedPackets.clear();
+            accumulative_timers.clear();
             nextSeqNum = sendBase;
             return;
         }
@@ -310,8 +314,19 @@ void RetransmitPacket() {
 }
 
 bool SendAck(SOCKET socket, sockaddr_in address, NetworkPacket packet) {
+
     packet.flags = 1;
-    return SendPacket(socket, address, packet, false);
+
+    int sentBytes = sendto(socket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&address, sizeof(address));
+
+    if (sentBytes == SOCKET_ERROR) {
+
+        std::cerr << "Failed to send ACK. Error: " << WSAGetLastError() << std::endl;
+
+        return false;
+
+    }
+    return true;
 }
 
 bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit) {
@@ -331,7 +346,7 @@ bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool i
     }
 
 
-    if ((nextSeqNum % SEQ_NUM_SPACE != (sendBase + WIND_SIZE) % SEQ_NUM_SPACE) || networkType == NetworkType::SERVER) {
+    if ((nextSeqNum + 1 % SEQ_NUM_SPACE != (sendBase + WIND_SIZE) % SEQ_NUM_SPACE) || networkType == NetworkType::SERVER) {
 
         std::cout << std::endl;
         std::cout << "Sending packet of sequence number: " << nextSeqNum << std::endl;
@@ -358,9 +373,8 @@ bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool i
             }
 
             if (packet.flags == 0) {
-                uint64_t now = GetTimeNow();
                 sendBuffer[packet.seqNumber] = packet;
-                timers[packet.seqNumber] = now;
+                timers[packet.seqNumber] = GetTimeNow();
 
             }
 
@@ -438,6 +452,8 @@ void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket p
 
     if (packet.commandID == REQ_CONNECT && packet.flags == 0) {
 
+        std::cout << "Handling connnection request" << std::endl;
+
         if (std::find_if(clientTargetAddresses.begin(), clientTargetAddresses.end(), [&](sockaddr_in target) {
             return CompareSockaddr(address, target);
             }) == clientTargetAddresses.end()) {
@@ -449,8 +465,12 @@ void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket p
             }
 
         }
+        else {
+            SendAck(socket, address, packet);
+        }
 
     }
+    
    
 }
 
@@ -514,6 +534,9 @@ void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
             }
 
             
+        }
+        else {
+            SendAck(socket, address, packet);
         }
 	}
 }

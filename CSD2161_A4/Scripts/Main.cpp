@@ -76,7 +76,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
             if (packet.commandID == REQ_CONNECT) {
 
-                std::cout << "Handling connnection request" << std::endl;
                 HandleConnectionRequest(udpServerSocket, address, packet);
 
             } else if (packet.commandID == REQ_GAME_START) {
