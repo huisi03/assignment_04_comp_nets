@@ -369,6 +369,8 @@ bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool i
         }
     
     }
+
+    return true;
 }
 
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address) {
