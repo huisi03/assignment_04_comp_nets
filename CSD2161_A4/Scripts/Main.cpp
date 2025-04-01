@@ -66,7 +66,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		std::cout << "Processing Server..." << std::endl;
 
-        int clientsRequired = 1;
+        int clientsRequired = 2;
         bool is_game_start = false;
 
 		while (true) {

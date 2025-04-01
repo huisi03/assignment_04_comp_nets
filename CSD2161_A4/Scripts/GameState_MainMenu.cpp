@@ -82,7 +82,7 @@ void GameStateMainMenuDraw(void) {
     if (gameType == GameType::SINGLE_PLAYER) {
         sprintf_s(strBuffer, "Press 'P' to start playing"); // click on to play level
     } else if (gameType == GameType::MULTIPLAYER) {
-        sprintf_s(strBuffer, "Press 'L' to enter Game loby"); // click on L to enter game loby
+        sprintf_s(strBuffer, "Press 'L' to enter Game lobby"); // click on L to enter game loby
     }
     AEGfxPrint((s8)pFont, strBuffer, textposition.x, textposition.y, 1.f, 1.f, 1.f, 1.f, 1.f);
 
