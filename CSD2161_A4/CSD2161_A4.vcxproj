@@ -26,16 +26,19 @@
     <ClCompile Include="Scripts\GameState_MainMenu.cpp" />
     <ClCompile Include="Scripts\Network.cpp" />
     <ClCompile Include="Scripts\Main.cpp" />
+    <ClCompile Include="Scripts\NetworkGameState.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Math.h" />
     <ClInclude Include="Scripts\Collision.h" />
+    <ClInclude Include="Scripts\GameObjects.h" />
     <ClInclude Include="Scripts\GameStateList.h" />
     <ClInclude Include="Scripts\GameStateMgr.h" />
     <ClInclude Include="Scripts\GameState_Asteroids.h" />
     <ClInclude Include="Scripts\GameState_MainMenu.h" />
     <ClInclude Include="Scripts\Network.h" />
     <ClInclude Include="Scripts\Main.h" />
+    <ClInclude Include="Scripts\NetworkGameState.h" />
     <ClInclude Include="Scripts\taskqueue.h" />
     <ClInclude Include="Scripts\taskqueue.hpp" />
   </ItemGroup>
