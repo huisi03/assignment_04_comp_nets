@@ -81,7 +81,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
             } else if (packet.commandID == REQ_GAME_START) {
 
-                if (clientsJoiningGame.size() > clientsRequired)
+                if (clientsJoiningGame.size() >= clientsRequired)
                 {
                     // ignore request, lobby is full
                     continue;
