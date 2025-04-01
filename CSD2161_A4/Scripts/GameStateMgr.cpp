@@ -97,6 +97,14 @@ void GameStateMgrUpdate()
 			GameStateFree = GameStateMainMenuFree;
 			GameStateUnload = GameStateMainMenuUnload;
 			break;
+        case GS_LOBBY:
+            GameStateLoad = GameStateLobbyLoad;
+            GameStateInit = GameStateLobbyInit;
+            GameStateUpdate = GameStateLobbyUpdate;
+            GameStateDraw = GameStateLobbyDraw;
+            GameStateFree = GameStateLobbyFree;
+            GameStateUnload = GameStateLobbyUnload;
+            break;
 		// exception
 		default:
 			AE_FATAL_ERROR("invalid state!!");
