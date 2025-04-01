@@ -67,7 +67,8 @@ enum CommandID
     PLAYER_HIT = 0x30,
     PLAYER_SCORE = 0x31,
     GAME_OVER = 0x32,
-    UNKNOWN = 0x50
+    UNKNOWN = 0x50,
+    ERROR_PKT = 0x51
 };
 
 struct NetworkPacket
@@ -95,7 +96,6 @@ extern uint16_t serverPort;                                        // used for N
 extern uint16_t clientPort;                                        // used for NetworkType::SERVER
 extern SOCKET udpClientSocket;                                     // used for NetworkType::CLIENT
 extern SOCKET udpServerSocket;                                     // used for NetworkType::SERVER
-extern bool is_client_disconnect;
 
 extern const std::string configFileRelativePath;
 extern const std::string configFileServerIp;
@@ -109,8 +109,9 @@ int StartServer();
 int ConnectToServer();
 void Disconnect();
 
-void AwaitAck();
-void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit);
+bool SendAck(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+void RetransmitPacket();
+bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 
 void SendQuitRequest(SOCKET socket, sockaddr_in address);
@@ -118,14 +119,14 @@ void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 
 void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
-bool SendJoinRequest(SOCKET socket, sockaddr_in address);
+void SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendInput(SOCKET socket, sockaddr_in address);
 void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address);
-void ReceiveGameStateStart(SOCKET socket);
+bool HandleGameStateStart(NetworkPacket recvPkt);
 
 // Helper functions
 uint64_t GetTimeNow();

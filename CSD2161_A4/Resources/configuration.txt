@@ -1,2 +1,2 @@
-serverIp 192.168.1.234
+serverIp 10.132.57.252
 serverUdpPort 9000

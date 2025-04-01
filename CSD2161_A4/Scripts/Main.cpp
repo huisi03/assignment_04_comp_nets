@@ -66,20 +66,22 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		std::cout << "Processing Server..." << std::endl;
 
-        sockaddr_in address{};
-        int clientsRequired = 4;
+        int clientsRequired = 1;
+        bool is_game_start = false;
 
-		while (true)
-		{
+		while (true) {
+
+            sockaddr_in address{};
 			NetworkPacket packet = ReceivePacket(udpServerSocket, address);
 
             if (packet.commandID == REQ_CONNECT) {
 
+                std::cout << "Handling connnection request" << std::endl;
                 HandleConnectionRequest(udpServerSocket, address, packet);
 
-            }else if (packet.commandID == REQ_GAME_START) {
+            } else if (packet.commandID == REQ_GAME_START) {
 
-                if (clientTargetAddresses.size() == clientsRequired)
+                if (clientTargetAddresses.size() > clientsRequired)
                 {
                     // ignore request, lobby is full
                     continue;
@@ -91,23 +93,23 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
                 HandleQuitRequest(udpServerSocket, address, packet);
 
-            } else if (clientsJoiningGame.size() == clientsRequired) {
+            } else if (clientsJoiningGame.size() >= clientsRequired && !is_game_start) {
 
 				for (sockaddr_in const addr : clientsJoiningGame)
 				{
 					SendGameStateStart(udpServerSocket, addr);
 				}
-
-				while (true)
-				{
-                    // Remove code if needed
-                    if (clientTargetAddresses.size() == 0) {
-                        break;
-                    }
-				}
+                is_game_start = true;
+                                
 			}
-			
 
+            // placeholder code
+            if (is_game_start) {
+                if (clientTargetAddresses.size() == 0) {
+                    break;
+                }
+            }
+                
 		}
 
 		Disconnect();
@@ -118,10 +120,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		std::cout << "Processing Client..." << std::endl;
 
-        while (!is_client_disconnect)
-        {
-            BeginGameLoop(instanceH, show);
-        }
+        BeginGameLoop(instanceH, show);
+        
 
 		Disconnect();
 	}
@@ -145,27 +145,28 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 void ProcessMultiplayerClientInput() {
 
-    // Send join request REQ_GAME_START upon pressing "L"
+    sockaddr_in address{};
+    NetworkPacket packet = ReceivePacket(udpClientSocket, address);
 
     if (AEInputCheckTriggered(AEVK_L) && gGameStateCurr == GS_MAINMENU) {
 
-        if (SendJoinRequest(udpClientSocket, serverTargetAddress)) {
+        SendJoinRequest(udpClientSocket, serverTargetAddress);
 
-            std::cout << "Joined the lobby successfully!" << std::endl;
-            std::cout << "Waiting for game to start..." << std::endl;
-
-            ReceiveGameStateStart(udpClientSocket);
-        }
-        else
-        {
-            std::cerr << "Failed to join lobby" << std::endl;
-        }
+        std::cout << "Joined the lobby successfully!" << std::endl;
+        std::cout << "Waiting for game to start..." << std::endl;
         
     } else if (AEInputCheckTriggered(AEVK_Q)) {
 
         SendQuitRequest(udpClientSocket, serverTargetAddress);
         gGameStateNext = GS_QUIT;
     }
+
+    if (HandleGameStateStart(packet)) {
+        gGameStateNext = GS_ASTEROIDS;
+    }
+
+    // Resend lost packets if needed
+    RetransmitPacket();
 }
 
 void BeginGameLoop(HINSTANCE instanceH, int show) {

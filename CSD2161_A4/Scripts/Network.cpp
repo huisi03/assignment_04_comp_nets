@@ -16,7 +16,6 @@ uint16_t serverPort{};                                          // used for Netw
 uint16_t clientPort{};                                          // used for NetworkType::SERVER
 SOCKET udpClientSocket = INVALID_SOCKET;                        // used for NetworkType::CLIENT
 SOCKET udpServerSocket = INVALID_SOCKET;                        // used for NetworkType::SERVER
-bool is_client_disconnect = false;
 
 const std::string configFileRelativePath = "Resources/Configuration.txt";
 const std::string configFileServerIp = "serverIp";
@@ -124,6 +123,9 @@ int StartServer()
 		return ERROR_CODE;
 	}
 
+    u_long mode = 1;  // 1 = Non-blocking
+    ioctlsocket(udpServerSocket, FIONBIO, &mode);
+
 	// Create a sockaddr_in for binding
 	sockaddr_in bindAddress{};
 	bindAddress.sin_family = AF_INET;
@@ -218,6 +220,9 @@ int ConnectToServer()
 		return ERROR_CODE;
 	}
 
+    u_long mode = 1;  // 1 = Non-blocking
+    ioctlsocket(udpClientSocket, FIONBIO, &mode);
+
 	// Store target address
 	serverTargetAddress = *(reinterpret_cast<sockaddr_in*>(udpInfo->ai_addr));
 
@@ -238,16 +243,17 @@ int ConnectToServer()
     requestConnectionSegment.flags = 0;
     requestConnectionSegment.dataLength = 0;
 
-    SendPacket(udpClientSocket, serverTargetAddress, requestConnectionSegment, false);
-
-    // Await for ack of sent segment
-    AwaitAck();
-
-    // If send buffer is still not empty return error:
-    // failed to connect to server
-    if (!sendBuffer.empty()) {
+    if (SendPacket(udpClientSocket, serverTargetAddress, requestConnectionSegment, false)) {
+        // Await for ack of sent segment
+        sockaddr_in address{};
+        NetworkPacket packet = ReceivePacket(udpClientSocket, address);
+    }
+    else {
         return ERROR_CODE;
     }
+
+
+    
 
 	return 0;
 }
@@ -268,74 +274,47 @@ void Disconnect()
 	WSACleanup();
 }
 
-void AwaitAck() {
-    std::cout << "\nAwaiting an acknowledgment of sent packets..." << std::endl;
+void RetransmitPacket() {
 
     std::map<uint32_t, uint64_t> accumulative_timers{};
-
     for (auto& [seqNum, time] : timers) {
         accumulative_timers[seqNum] = 0;
     }
 
-    while (!sendBuffer.empty()) {
+    // Retransmission
+    uint64_t now = GetTimeNow();
+    for (auto& [seqNum, timer] : timers) {
 
-        uint64_t now = GetTimeNow();
+        if (now - timer >= TIMEOUT_MS && accumulative_timers[seqNum] < TIMEOUT_MS_MAX) {
 
-        // Retransmission logic
-        for (auto& [seqNum, timer] : timers) {
+            std::cout << "Timeout resending packet with sequence number: " << seqNum << std::endl;
 
-            if (now - timer >= TIMEOUT_MS && accumulative_timers[seqNum] <= TIMEOUT_MS_MAX) {
-                std::cout << "Timeout resending packet with sequence number: " << seqNum << std::endl;
+            SendPacket(udpClientSocket, serverTargetAddress, sendBuffer[seqNum], true);
 
-                SendPacket(udpClientSocket, serverTargetAddress, sendBuffer[seqNum], true);
-                accumulative_timers[seqNum] += (now - timer);
-                timers[seqNum] = now;  // Update retransmission time
-                
-            } else if (accumulative_timers[seqNum] > TIMEOUT_MS_MAX) {
+            accumulative_timers[seqNum] += (now - timer);
+            timers[seqNum] = now;  // Update retransmission time
 
-                // Receiver is unresponsive, exit loop
-
-                std::cout << "Receiver unresponsive. Resetting connection.\n";
-                sendBuffer.clear();
-                timers.clear();
-                ackedPackets.clear();
-                nextSeqNum = sendBase;
-                return;  
-            }
         }
+        else if (accumulative_timers[seqNum] >= TIMEOUT_MS_MAX) {
 
-        // Receive ACK
-        sockaddr_in senderAddr{};
-        NetworkPacket recvUdpSegment = ReceivePacket(udpClientSocket, senderAddr);
-
-        if (CompareSockaddr(senderAddr, serverTargetAddress)) {
-
-            uint32_t seqNum = recvUdpSegment.seqNumber;
-            uint8_t flag = recvUdpSegment.flags;
-
-            if (flag == 1) { // Acknowledgment flag
-
-                if (sendBuffer.find(seqNum) != sendBuffer.end()) {
-                    ackedPackets.insert(seqNum);
-
-                    // Advance sendBase if the lowest unacknowledged packet is now acknowledged
-                    while (ackedPackets.count(sendBase)) {
-                        std::cout << "\nSliding window: removing " << sendBase << std::endl;
-                        sendBuffer.erase(sendBase);
-                        timers.erase(sendBase);
-                        ackedPackets.erase(sendBase);
-                        accumulative_timers.erase(sendBase);
-                        sendBase = (sendBase + 1) % SEQ_NUM_SPACE;
-                    }
-                }
-            }
+            // Receiver is unresponsive, exit loop
+            std::cout << "Receiver unresponsive. Resetting connection.\n";
+            sendBuffer.erase(seqNum);
+            timers.erase(seqNum);
+            ackedPackets.erase(seqNum);
+            accumulative_timers.erase(seqNum);
+            nextSeqNum = sendBase;
+            return;
         }
     }
-
-    std::cout << "Nothing more to ack here!" << std::endl;
 }
 
-void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit){
+bool SendAck(SOCKET socket, sockaddr_in address, NetworkPacket packet) {
+    packet.flags = 1;
+    return SendPacket(socket, address, packet, false);
+}
+
+bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit) {
 
     if (is_retransmit) {
 
@@ -344,13 +323,15 @@ void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool i
         if (sentBytes == SOCKET_ERROR) {
 
             std::cerr << "Failed to send game data. Error: " << WSAGetLastError() << std::endl;
+
+            return false;
         }
 
-        return;
+        return true;
     }
 
 
-    if ((nextSeqNum % SEQ_NUM_SPACE != (sendBase + WIND_SIZE) % SEQ_NUM_SPACE)) {
+    if ((nextSeqNum % SEQ_NUM_SPACE != (sendBase + WIND_SIZE) % SEQ_NUM_SPACE) || networkType == NetworkType::SERVER) {
 
         std::cout << std::endl;
         std::cout << "Sending packet of sequence number: " << nextSeqNum << std::endl;
@@ -359,22 +340,31 @@ void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool i
         std::cout << std::endl;
 
         packet.seqNumber = nextSeqNum;
+
         int sentBytes = sendto(socket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&address, sizeof(address));
 
         if (sentBytes == SOCKET_ERROR) {
 
             std::cerr << "Failed to send game data. Error: " << WSAGetLastError() << std::endl;
 
+            return false;
+
         } else {
 
-            // Update SR variables
-            ++nextSeqNum;
+            nextSeqNum = (nextSeqNum + 1) % SEQ_NUM_SPACE;
+
+            if (networkType == NetworkType::SERVER) {
+                return true;
+            }
 
             if (packet.flags == 0) {
                 uint64_t now = GetTimeNow();
                 sendBuffer[packet.seqNumber] = packet;
                 timers[packet.seqNumber] = now;
+
             }
+
+            return true;
 
         }
     
@@ -383,14 +373,21 @@ void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool i
 
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address) {
 
-	NetworkPacket packet;
-
+    NetworkPacket packet{};
     int addressSize = sizeof(address);
     int receivedBytes = recvfrom(socket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&address, &addressSize);
 
-	if (receivedBytes == SOCKET_ERROR)
-	{
-		std::cerr << "Failed to receive data. Error: " << WSAGetLastError() << std::endl;
+    if (receivedBytes == SOCKET_ERROR) {
+
+        size_t errorCode = WSAGetLastError();
+
+        std::cerr << "Failed to receive data. Error: " << errorCode << std::endl;
+
+        if (errorCode != WSAEWOULDBLOCK)
+        {
+            packet.commandID = ERROR_PKT;
+        }
+
     } else {
 
         uint32_t seqNum = packet.seqNumber;
@@ -398,55 +395,57 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address) {
         if ((seqNum >= recvBase && seqNum < recvBase + WIND_SIZE) ||
             (seqNum < recvBase && (seqNum + SEQ_NUM_SPACE) < (recvBase + WIND_SIZE))) {
 
-            std::cout << std::endl;
-            std::cout << "Received a packet!" << std::endl;
-            std::cout << "Sequence number: " << seqNum << std::endl;
-            std::cout << "Command id is " << std::to_string(packet.commandID) << std::endl;
-            std::cout << "Flag is " << std::to_string(packet.flags) << std::endl;
-            std::cout << std::endl;
+            std::cout << "\nReceived a packet!\n";
+            std::cout << "Sequence number: " << seqNum << "\n";
+            std::cout << "Command ID: " << std::to_string(packet.commandID) << "\n";
+            std::cout << "Flag: " << std::to_string(packet.flags) << "\n\n";
 
             recvBuffer[seqNum] = packet;
 
-            // Send ACK
             if (packet.flags == 0) {
-
-                NetworkPacket ackPacket = packet;
-                ackPacket.flags = 1;
-                SendPacket(socket, address, ackPacket, false);
-
                 // Slide window forward when contiguous packets are received
                 while (recvBuffer.count(recvBase)) {
                     recvBuffer.erase(recvBase);
                     recvBase = (recvBase + 1) % SEQ_NUM_SPACE;
                 }
             }
+            else if (packet.flags == 1 && networkType == NetworkType::CLIENT) {
 
+                if (sendBuffer.find(packet.seqNumber) != sendBuffer.end()) {
 
+                    ackedPackets.insert(packet.seqNumber);
+
+                    // Advance sendBase if the lowest unacknowledged packet is now acknowledged
+                    while (ackedPackets.count(sendBase)) {
+                        std::cout << "\nSliding window: removing " << sendBase << std::endl;
+                        sendBuffer.erase(sendBase);
+                        timers.erase(sendBase);
+                        ackedPackets.erase(sendBase);
+                        sendBase = (sendBase + 1) % SEQ_NUM_SPACE;
+                    }
+                }
+            }
             
         }
     }
 
-	return packet;
+    return packet;
 }
-
-
 
 void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet) {
 
-    if (packet.commandID == REQ_CONNECT) {
+    if (packet.commandID == REQ_CONNECT && packet.flags == 0) {
 
         if (std::find_if(clientTargetAddresses.begin(), clientTargetAddresses.end(), [&](sockaddr_in target) {
             return CompareSockaddr(address, target);
             }) == clientTargetAddresses.end()) {
 
-            // Add client
-            clientTargetAddresses.push_back(address);
+            if (SendAck(socket, address, packet)) {
+                // Add client
+                clientTargetAddresses.push_back(address);
+                std::cout << "Number of clients connected: " << clientTargetAddresses.size() << std::endl;
+            }
 
-            // Send ACK
-            packet.flags = 1;
-            SendPacket(socket, address, packet, false);
-
-            std::cout << "Number of clients connected: " << clientTargetAddresses.size() << std::endl;
         }
 
     }
@@ -454,27 +453,14 @@ void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket p
 }
 
 void SendQuitRequest(SOCKET socket, sockaddr_in address) {
-
-    // Clear existing send buffer as it won't matter upon disconnection
-    sendBuffer.clear();
-    timers.clear();
-
     NetworkPacket packet{};
     packet.commandID = CommandID::REQ_QUIT;
-
     SendPacket(socket, address, packet, false);
-
-    AwaitAck();
-
-    if (sendBuffer.empty()) {
-        is_client_disconnect = true;
-    }
-
 }
 
 void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet) {
 
-    if (packet.commandID == REQ_QUIT) {
+    if (packet.commandID == REQ_QUIT && packet.flags == 0) {
         packet.flags = 1;
         SendPacket(socket, address, packet, false);
     }
@@ -497,47 +483,38 @@ void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 }
 
 
-bool SendJoinRequest(SOCKET socket, sockaddr_in address)
-{
+void SendJoinRequest(SOCKET socket, sockaddr_in address) {
 	NetworkPacket packet;
 	packet.commandID = REQ_GAME_START;
 	SendPacket(socket, address, packet, false);
-
-    AwaitAck();
-
-    if (sendBuffer.empty()) {
-        return true;
-    }
-
-    std::cout << "Oops send buffer is not empty" << std::endl;
-    return false;
 
 }
 
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 {
-	if (packet.commandID == REQ_GAME_START)
-	{
+	if (packet.commandID == REQ_GAME_START && packet.flags == 0) {
+
         if (std::find_if(clientTargetAddresses.begin(), clientTargetAddresses.end(), [&](sockaddr_in target) {
             return CompareSockaddr(address, target);
             }) != clientTargetAddresses.end()) {
 
-            uint16_t sourcePortNumber = address.sin_port;
-            std::cout << "Player [" << sourcePortNumber << "] is joining the lobby." << std::endl;
-
             // Send ACK
-            packet.flags = 1;
-            SendPacket(socket, address, packet, false);
+            if (SendAck(socket, address, packet)) {
 
-            if (std::find_if(clientsJoiningGame.begin(), clientsJoiningGame.end(), [&](sockaddr_in target) {
-                return CompareSockaddr(address, target);
-                }) == clientsJoiningGame.end()) {
-                clientsJoiningGame.push_back(address);
+                uint16_t sourcePortNumber = address.sin_port;
+                std::cout << "[SERVER SIDE] Player [" << sourcePortNumber << "] is joining the lobby." << std::endl;
+
+                if (std::find_if(clientsJoiningGame.begin(), clientsJoiningGame.end(), [&](sockaddr_in target) {
+                    return CompareSockaddr(address, target);
+                    }) == clientsJoiningGame.end()) {
+                    clientsJoiningGame.push_back(address);
+                }
             }
+
+            
         }
 	}
 }
-
 
 void SendInput(SOCKET socket, sockaddr_in address) 
 {
@@ -572,33 +549,25 @@ void SendGameStateStart(SOCKET socket, sockaddr_in address)
     // Send RSP_GAME_START
     NetworkPacket packet;
     packet.commandID = RSP_GAME_START;
-    SendPacket(socket, address, packet, false);
-
+    if (SendPacket(socket, address, packet, false)) {
+        std::cout << "[SERVER SIDE] Game started. Initial game state..." << std::endl;
+    }
+    
     // @todo if needed: To send initial game data with the packet
 }
 
-void ReceiveGameStateStart(SOCKET socket) 
+bool HandleGameStateStart(NetworkPacket recvPkt)
 {
-    while (true) {
-
-        sockaddr_in address{};
-        NetworkPacket packet = ReceivePacket(socket, address);
-
-        if (packet.commandID == RSP_GAME_START)
-        {
-            std::cout << "Game started. Initial game state..." <<  std::endl;
-
-            // Send ACK
-            packet.flags = 1;
-            SendPacket(socket, serverTargetAddress, packet,false);
-
-            return;
+    if (recvPkt.commandID == RSP_GAME_START && recvPkt.flags == 0) {
+        // Send ACK
+        if (SendAck(udpClientSocket, serverTargetAddress, recvPkt)) {
+            std::cout << "[CLIENT SIDE] Game started. Initial game state..." << std::endl;
+            return true;
         }
-
     }
-	
 
-	
+    return false;
+
 }
 
 bool CompareSockaddr(const sockaddr_in& addr1, const sockaddr_in& addr2) {
