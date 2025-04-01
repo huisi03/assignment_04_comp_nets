@@ -124,7 +124,7 @@ void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 
 void SendInput(SOCKET socket, sockaddr_in address);
 void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<uint16_t, PlayerData>& playersData);
-void HandlePlayerInput(uint16_t clientPortID, NetworkPacket packet, std::map<uint16_t, PlayerData>& playersData);
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData);
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData);
 void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData);

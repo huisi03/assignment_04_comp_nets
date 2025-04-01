@@ -11,7 +11,7 @@ uint16_t port;
 uint16_t clientPort;
 SOCKET udpSocket;
 std::mutex packetMutex;
-
+std::mutex playerDataMutex;
 
 
 void AttachConsoleWindow()
@@ -247,7 +247,7 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
 {
 	static_assert(sizeof(PlayerData) <= DEFAULT_BUFLEN, "PlayerData is too large for NetworkPacket data buffer!");
-
+	std::lock_guard<std::mutex> lock(packetMutex);
 	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
 	memcpy(packet.data, &player, sizeof(PlayerData)); // Copy struct into buffer
 	std::cout << "Unpacked: PosX=" << player.posX << ", PosY=" << player.posY
@@ -258,6 +258,7 @@ void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
 // Unpacking the data from the network packet into the player data
 void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player)
 {
+	std::lock_guard<std::mutex> lock(packetMutex);
 	memcpy(&player, packet.data, sizeof(PlayerData)); // Copy buffer back into struct
 }
 
@@ -342,10 +343,15 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 	}
 }
 
-void HandlePlayerInput(uint16_t clientPortID, NetworkPacket packet, std::map<uint16_t, PlayerData>& playersData)
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData)
 {
-	
-	if (packet.packetID == InputKey::UP)
+	std::lock_guard<std::mutex> lock(playerDataMutex);
+	if (packet.packetID == InputKey::NONE)
+	{
+		playersData[clientPortID].velX = 0;
+		playersData[clientPortID].velY = 0;
+	}
+	else if (packet.packetID == InputKey::UP)
 	{
 		float angle = degToRad(playersData[clientPortID].rotation);
 		float speed = 10; // Ensure speed is always applied

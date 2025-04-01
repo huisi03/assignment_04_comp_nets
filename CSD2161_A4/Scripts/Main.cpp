@@ -200,12 +200,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
 			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
 
-			if (packet.packetID != InputKey::NONE) // Send input only when necessary
-			{
-				packet.sourcePortNumber = GetClientPort();
-				packet.destinationPortNumber = targetAddress.sin_port;
-				SendPacket(udpSocket, targetAddress, packet);
-			}
+			packet.sourcePortNumber = GetClientPort();
+			packet.destinationPortNumber = targetAddress.sin_port;
+			SendPacket(udpSocket, targetAddress, packet);
 		}
 
 		Disconnect();
