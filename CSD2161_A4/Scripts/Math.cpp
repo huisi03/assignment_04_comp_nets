@@ -12,7 +12,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
  */
  /******************************************************************************/
 
-#include <../Math.h>
+#include <Math.h>
 
 float degToRad(float angle)
 {

@@ -22,7 +22,9 @@
 #include <map>	            // map
 #include <mutex>			// mutex
 #include <unordered_map>    // unordered map
-#include "../Math.h"           // Math
+#include <AEEngine.h>		// AEVec2
+#include "Math.h"
+#include "GameData.h"
 
 #undef WINSOCK_VERSION		// fix for macro redefinition
 #define WINSOCK_VERSION     2
@@ -84,26 +86,15 @@ struct NetworkPacket
     char data[DEFAULT_BUFLEN];
 };
 
-struct PlayerData
-{
-    float posX, posY;      // Position
-    float scaleX, scaleY;  // Scale
-    float velX, velY;      // Velocity (defaults to 0)
-    float rotation;        // Rotation (defaults to 0)
-
-    // Default constructor (needed for std::map)
-    PlayerData() : posX(0), posY(0), scaleX(0), scaleY(0), velX(0), velY(0), rotation(0) {}
-
-    // Constructor: Initializes pos and scale, defaults velocity and rotation to 0
-    PlayerData(float x, float y, float sx, float sy)
-        : posX(x), posY(y), scaleX(sx), scaleY(sy), velX(0.0f), velY(0.0f), rotation(0.0f) {}
-};
+struct PlayerData;
 
 // Global variables
 extern NetworkType networkType;
-extern sockaddr_in targetAddress;
-extern uint16_t port;
-extern SOCKET udpSocket;
+extern sockaddr_in serverTargetAddress;
+extern sockaddr_in clientTargetAddress;
+extern uint16_t serverPort;
+extern SOCKET udpServerSocket;
+extern SOCKET udpClientSocket;
 
 void AttachConsoleWindow();
 void FreeConsoleWindow();
@@ -111,13 +102,16 @@ void FreeConsoleWindow();
 int InitialiseNetwork();
 int StartServer();
 int ConnectToServer();
-void Disconnect();
+void Disconnect(SOCKET& socket);
 
 void SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 
 void PackPlayerData(NetworkPacket& packet, const PlayerData& player);
 void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player);
+
+void PackGameStateData(NetworkPacket& packet, const NetworkGameState& player);
+void UnpackGateStateData(const NetworkPacket& packet);
 
 void SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
@@ -129,7 +123,7 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData);
 void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData);
 
-void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients, std::map<uint16_t, PlayerData>& playersData);
+void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
 void ListenForUpdates(SOCKET udpSocket, sockaddr_in serverAddr, PlayerData& clientData);
 
 uint16_t GetClientPort();

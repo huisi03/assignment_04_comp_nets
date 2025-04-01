@@ -15,6 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 /******************************************************************************/
 
 #include "Network.h"	// networking for multiplayer
+
 #include "Main.h"		// main headers
 #include <thread>
 #include <atomic>
@@ -27,7 +28,6 @@ float	 g_dt;
 double	 g_appTime;
 int			pFont; // this is for the text
 const int	Fontsize = 25; // size of the text
-PlayerData clientData;									// on client side
 
 /******************************************************************************/
 /*!
@@ -65,7 +65,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		
 		sockaddr_in address{};
 		std::map<uint16_t, sockaddr_in> clients;
-		std::map<uint16_t, PlayerData> playersData;
 		std::unordered_map<uint16_t, std::thread> clientThreads;
 
 		int clientsRequired = 2;
@@ -75,7 +74,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		while (!gameStarted)
 		{
-			NetworkPacket packet = ReceivePacket(udpSocket, address);
+			NetworkPacket packet = ReceivePacket(udpServerSocket, address);
 
 			if (packet.packetID == JOIN_REQUEST)
 			{
@@ -85,7 +84,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 					continue;
 				}
 
-				HandleJoinRequest(udpSocket, address, packet);
+				HandleJoinRequest(udpServerSocket, address, packet);
 
 				// Check if the client is in the map already
 				if (clients.count(packet.sourcePortNumber) == false)
@@ -99,24 +98,24 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 					{
 						case 1:
 						{
-							float pos = 100.f;
-							float scale = 16.f;
+							AEVec2 posVec{ 100, 100 };
+							AEVec2 scaleVec{ 16, 16 };
 
-							playersData.emplace(packet.sourcePortNumber, PlayerData(pos, pos, scale, scale));
+							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
 							break;
 						}
 						case 2:
 						{
-							float pos = 200.f;
-							float scale = 16.f;
+							AEVec2 posVec{ 200, 200 };
+							AEVec2 scaleVec{ 16, 16 };
 
-							playersData.emplace(packet.sourcePortNumber, PlayerData(pos, pos, scale, scale));
+							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
 							break;
 						}
 					}
-					std::cout << "Num Players: " << playersData.size() << std::endl;
+					std::cout << "Num Players: " << playerDataMap.size() << std::endl;
 				}
-
+				
 				// Can start game when players is max
 				if (clientCount == clientsRequired)
 				{
@@ -125,17 +124,29 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 					for (auto& [p, addr] : clients)
 					{
-						if (playersData.count(p)) // Check if key 'p' exists in the map
+						if (playerDataMap.count(p)) // Check if key 'p' exists in the map
 						{
-							SendGameStateStart(udpSocket, addr, playersData[p]);
+							SendGameStateStart(udpServerSocket, addr, playerDataMap[p]);
 							// Start a thread for each client
-							clientThreads[p] = std::thread(HandleClientInput, udpSocket, p, std::ref(playersData));
+							clientThreads[p] = std::thread(HandleClientInput, udpServerSocket, p, std::ref(playerDataMap));
 						}
 						else
 						{
 							std::cerr << "Player " << p << " not found in playersData!" << std::endl;
 						}
 					}
+					// Setting the game state for all objects
+					gameDataState.playerCount = gameDataState.objectCount = clientCount;
+
+					// Set the player as the object in the game state
+					for (auto& [port, data] : playerDataMap)
+					{
+						static int i = 0;
+						gameDataState.objects[i].transform.position = data.transform.position;
+						gameDataState.objects[i].type = ObjectType::OBJ_SHIP;
+						++i;
+					}
+
 				}
 			}
 			else
@@ -144,8 +155,10 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			}
 		}
 
-		std::thread gameStateThread(BroadcastGameState, udpSocket, std::ref(clients), std::ref(playersData));
-		gameStateThread.detach(); // Run in the background
+		// Start a thread to broadcast the game state
+		std::thread gameStateThread(BroadcastGameState, udpServerSocket, std::ref(clients));
+		// Run in the background
+		gameStateThread.detach(); 
 
 		// After game starts, wait for all threads to finish
 		for (auto& [p, thread] : clientThreads)
@@ -153,16 +166,16 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			if (thread.joinable())
 				thread.join();
 		}
-		Disconnect();
+		Disconnect(udpServerSocket);
 	}
 	else if (networkType == NetworkType::CLIENT)
 	{
 		std::cout << "Processing Client..." << std::endl;
 		
-		SendJoinRequest(udpSocket, targetAddress);
+		SendJoinRequest(udpClientSocket, serverTargetAddress);
 
-		NetworkPacket responsePacket = ReceivePacket(udpSocket, targetAddress);
-		if (responsePacket.destinationPortNumber == port && responsePacket.packetID == REQUEST_ACCEPTED)
+		NetworkPacket responsePacket = ReceivePacket(udpClientSocket, serverTargetAddress);
+		if (responsePacket.destinationPortNumber == serverPort && responsePacket.packetID == REQUEST_ACCEPTED)
 		{
 			std::cout << "Joined the lobby successfully!" << std::endl;
 			std::cout << "Waiting for lobby to start..." << std::endl;
@@ -172,10 +185,10 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			std::cerr << "Failed to join lobby" << std::endl;
 		}
 
-		ReceiveGameStateStart(udpSocket, clientData);
+		ReceiveGameStateStart(udpClientSocket, clientData);
 
 		// Start the background thread for listening to game state updates
-		std::thread receiveThread(ListenForUpdates, udpSocket, targetAddress, std::ref(clientData));
+		std::thread receiveThread(ListenForUpdates, udpClientSocket, serverTargetAddress, std::ref(clientData));
 		receiveThread.detach(); // Detach it to run in background
 
 		HWND clientWindow = GetConsoleWindow();
@@ -201,11 +214,11 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
 
 			packet.sourcePortNumber = GetClientPort();
-			packet.destinationPortNumber = targetAddress.sin_port;
-			SendPacket(udpSocket, targetAddress, packet);
+			packet.destinationPortNumber = serverTargetAddress.sin_port;
+			SendPacket(udpClientSocket, serverTargetAddress, packet);
 		}
 
-		Disconnect();
+		Disconnect(udpClientSocket);
 	}
 	else if (networkType == NetworkType::SINGLE_PLAYER)
 	{

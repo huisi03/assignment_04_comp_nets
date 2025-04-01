@@ -1,0 +1,2 @@
+serverIp 127.0.0.1
+serverUdpPort 9000

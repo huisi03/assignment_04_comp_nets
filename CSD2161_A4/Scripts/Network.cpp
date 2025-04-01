@@ -1,17 +1,22 @@
 #include "Network.h"
-#include "taskqueue.h"
-
-
 
 
 // Define
 NetworkType networkType = NetworkType::UNINITIALISED;
-sockaddr_in targetAddress;
-uint16_t port;
+//sockaddr_in targetAddress;
+sockaddr_in serverTargetAddress{};                              // used for NetworkType::CLIENT
+sockaddr_in clientTargetAddress{};								// used for NetworkType::SERVER
+uint16_t serverPort;
 uint16_t clientPort;
-SOCKET udpSocket;
+//SOCKET udpSocket;
+SOCKET udpClientSocket = INVALID_SOCKET;                        // used for NetworkType::CLIENT
+SOCKET udpServerSocket = INVALID_SOCKET;                        // used for NetworkType::SERVER
 std::mutex packetMutex;
 std::mutex playerDataMutex;
+
+const std::string configFileRelativePath = "Resources/Configuration.txt";
+const std::string configFileServerIp = "serverIp";
+const std::string configFileServerPort = "serverUdpPort";
 
 
 void AttachConsoleWindow()
@@ -58,10 +63,18 @@ int InitialiseNetwork()
 int StartServer()
 {
 	// Get UDP Port Number
-	std::string portString;
-	std::cout << "Server UDP Port Number: ";
-	std::getline(std::cin, portString);
-	port = static_cast<uint16_t>(std::stoi(portString));
+	std::string portString{};
+	std::ifstream config_file(configFileRelativePath);
+	if (config_file.is_open()) {
+		std::string buffer{};
+		while (std::getline(config_file, buffer)) {
+			std::string::size_type findIndex = buffer.find(configFileServerPort);
+			if (findIndex != std::string::npos) {
+				portString = buffer.substr(findIndex + configFileServerPort.size() + 1);
+				serverPort = static_cast<uint16_t>(std::stoi(portString));
+			}
+		}
+	}
 
 	// Setup WSA data
 	WSADATA wsaData;
@@ -87,8 +100,8 @@ int StartServer()
 	}
 
 	// Create a UDP socket
-	udpSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
-	if (udpSocket == INVALID_SOCKET)
+	udpServerSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
+	if (udpServerSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
 		freeaddrinfo(udpInfo);
@@ -99,19 +112,19 @@ int StartServer()
 	// Create a sockaddr_in for binding
 	sockaddr_in bindAddress{};
 	bindAddress.sin_family = AF_INET;
-	bindAddress.sin_port = htons(port);
+	bindAddress.sin_port = htons(serverPort);
 	bindAddress.sin_addr.s_addr = INADDR_ANY;
 
-	if (bind(udpSocket, (sockaddr*)&bindAddress, sizeof(bindAddress)) == SOCKET_ERROR)
+	if (bind(udpServerSocket, (sockaddr*)&bindAddress, sizeof(bindAddress)) == SOCKET_ERROR)
 	{
 		std::cerr << "bind() failed." << std::endl;
-		closesocket(udpSocket);
+		closesocket(udpServerSocket);
 		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
 
-	// Print server IP address and port number
+	// Print server IP address and serverPort number
 	char serverIPAddress[DEFAULT_BUFLEN];
 	struct sockaddr_in* address = reinterpret_cast<struct sockaddr_in*> (udpInfo->ai_addr);
 	inet_ntop(AF_INET, &(address->sin_addr), serverIPAddress, INET_ADDRSTRLEN);
@@ -120,7 +133,7 @@ int StartServer()
 	std::cout << std::endl;
 	std::cout << "Server has been established" << std::endl;
 	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
-	std::cout << "Server UDP Port Number: " << port << std::endl;
+	std::cout << "Server UDP Port Number: " << serverPort << std::endl;
 	std::cout << std::endl;
 
 	freeaddrinfo(udpInfo);
@@ -130,16 +143,24 @@ int StartServer()
 
 int ConnectToServer()
 {
-	// Get IP Address
+	// Get IP Address & UDP Server Port Number
 	std::string serverIPAddress{};
-	std::cout << "Server IP Address: ";
-	std::getline(std::cin, serverIPAddress);
-
-	// Get UDP Server Port Number
-	std::string serverPortString;
-	std::cout << "Server UDP Port Number: ";
-	std::getline(std::cin, serverPortString);
-	uint16_t serverPort = static_cast<uint16_t>(std::stoi(serverPortString));
+	std::string serverPortString{};
+	std::ifstream config_file(configFileRelativePath);
+	if (config_file.is_open()) {
+		std::string buffer{};
+		while (std::getline(config_file, buffer)) {
+			std::string::size_type findIndex = buffer.find(configFileServerIp);
+			if (findIndex != std::string::npos) {
+				serverIPAddress = buffer.substr(findIndex + configFileServerIp.size() + 1);
+			}
+			findIndex = buffer.find(configFileServerPort);
+			if (findIndex != std::string::npos) {
+				serverPortString = buffer.substr(findIndex + configFileServerPort.size() + 1);
+				serverPort = static_cast<uint16_t>(std::stoi(serverPortString));
+			}
+		}
+	}
 
 	// Get UDP Client Port Number
 	std::string portString;
@@ -171,8 +192,8 @@ int ConnectToServer()
 	}
 
 	// Create a UDP Socket
-	udpSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
-	if (udpSocket == INVALID_SOCKET)
+	udpClientSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
+	if (udpClientSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
 		freeaddrinfo(udpInfo);
@@ -186,17 +207,17 @@ int ConnectToServer()
 	clientAddr.sin_addr.s_addr = INADDR_ANY;  // Accept packets from any interface
 	clientAddr.sin_port = htons(clientPort);
 
-	if (bind(udpSocket, (sockaddr*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR)
+	if (bind(udpClientSocket, (sockaddr*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR)
 	{
 		std::cerr << "bind() failed. Error: " << WSAGetLastError() << std::endl;
-		closesocket(udpSocket);
+		closesocket(udpClientSocket);
 		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
 
 	// Store target address
-	targetAddress = *(reinterpret_cast<sockaddr_in*>(udpInfo->ai_addr));
+	serverTargetAddress = *(reinterpret_cast<sockaddr_in*>(udpInfo->ai_addr));
 
 	// Print server IP address and port number
 	std::cout << std::endl;
@@ -210,10 +231,10 @@ int ConnectToServer()
 	return 0;
 }
 
-void Disconnect()
+void Disconnect(SOCKET& socket)
 {
-	shutdown(udpSocket, SD_SEND);
-	closesocket(udpSocket);
+	shutdown(socket, SD_SEND);
+	closesocket(socket);
 	WSACleanup();
 }
 
@@ -246,12 +267,19 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 // Pack the player data into the network packet for sending
 void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
 {
-	static_assert(sizeof(PlayerData) <= DEFAULT_BUFLEN, "PlayerData is too large for NetworkPacket data buffer!");
 	std::lock_guard<std::mutex> lock(packetMutex);
 	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
 	memcpy(packet.data, &player, sizeof(PlayerData)); // Copy struct into buffer
-	std::cout << "Unpacked: PosX=" << player.posX << ", PosY=" << player.posY
-		<< ", VelX=" << player.velX << ", VelY=" << player.velY << std::endl;
+	std::cout << "Unpacked: PosX=" << player.transform.position.x << ", PosY=" << player.transform.position.y
+		<< ", VelX=" << player.transform.velocity.x << ", VelY=" << player.transform.velocity.y << std::endl;
+}
+
+void PackGameStateData(NetworkPacket& packet, const NetworkGameState& player)
+{
+	std::lock_guard<std::mutex> lock1(packetMutex);
+	std::lock_guard<std::mutex> lock2(gameDataMutex);
+	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
+	memcpy(packet.data, &player, sizeof(NetworkGameState)); // Copy struct into buffer
 }
 
 
@@ -259,8 +287,19 @@ void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
 void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player)
 {
 	std::lock_guard<std::mutex> lock(packetMutex);
+	
 	memcpy(&player, packet.data, sizeof(PlayerData)); // Copy buffer back into struct
 }
+
+
+// Unpacking the data from the network packet into the player data
+void UnpackGateStateData(const NetworkPacket& packet)
+{
+	std::lock_guard<std::mutex> lock1(packetMutex);
+	std::lock_guard<std::mutex> lock2(gameDataMutex);
+	memcpy(&gameDataState, packet.data, sizeof(NetworkGameState)); // Copy buffer back into struct
+}
+
 
 void SendJoinRequest(SOCKET socket, sockaddr_in address) 
 {
@@ -279,7 +318,7 @@ void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet)
 
 		NetworkPacket responsePacket;
 		responsePacket.packetID = PacketID::REQUEST_ACCEPTED;
-		responsePacket.sourcePortNumber = port;
+		responsePacket.sourcePortNumber = serverPort;
 		responsePacket.destinationPortNumber = packet.sourcePortNumber;
 		SendPacket(socket, address, responsePacket);
 	}
@@ -289,7 +328,7 @@ void SendInput(SOCKET socket, sockaddr_in address)
 {
 	NetworkPacket packet;
 	packet.packetID = PacketID::GAME_INPUT;
-	packet.sourcePortNumber = port;
+	packet.sourcePortNumber = serverPort;
 	packet.destinationPortNumber = address.sin_port;
 	strcpy_s(packet.data, "[PLAYER_INPUT_DATA]");
 	SendPacket(socket, address, packet);
@@ -346,65 +385,49 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData)
 {
 	std::lock_guard<std::mutex> lock(playerDataMutex);
+	PlayerInput& playerInput = playerInputMap[clientPortID];
 	if (packet.packetID == InputKey::NONE)
 	{
-		playersData[clientPortID].velX = 0;
-		playersData[clientPortID].velY = 0;
+		playersData[clientPortID].transform.velocity = { 0, 0 };
+		playerInput.NoInput();
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		float angle = degToRad(playersData[clientPortID].rotation);
-		float speed = 10; // Ensure speed is always applied
-
-		playersData[clientPortID].velX = cosf(angle) * speed;
-		playersData[clientPortID].velY = sinf(angle) * speed;
-		//std::cout << "UP" << std::endl;
+		playersData[clientPortID].transform.position = { 10, 10 };
+		playerInput.upKey = true;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		float angle = degToRad(playersData[clientPortID].rotation);
-		float speed = 10;
-
-		playersData[clientPortID].velX = -cosf(angle) * speed;
-		playersData[clientPortID].velY = -sinf(angle) * speed;
-		//std::cout << "down" << std::endl;
+		playersData[clientPortID].transform.position = { 20, 20 };
+		playerInput.downKey = true;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
-		playersData[clientPortID].velX = 0;
-		playersData[clientPortID].velY = 0;
-		playersData[clientPortID].rotation += 0.5;
-		//std::cout << "right" << std::endl;
+		playersData[clientPortID].transform.position = { 30, 30 };
+		playerInput.rightKey = true;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
-		playersData[clientPortID].velX = 0;
-		playersData[clientPortID].velY = 0;
-		playersData[clientPortID].rotation -= 0.5;
-		//std::cout << "left" << std::endl;
+		playersData[clientPortID].transform.position = { 40, 40 };
+		playerInput.leftKey = true;
 	}
 	else if (packet.packetID == InputKey::SPACE)
 	{
-
+		playerInput.spaceKey = true;
 	}
-
-	// Apply velocity to update position with real delta time
-	float deltaTime = 0.016f; // Replace with actual frame time in your loop
-	playersData[clientPortID].posX += playersData[clientPortID].velX * deltaTime;
-	playersData[clientPortID].posY += playersData[clientPortID].velY * deltaTime;
 }
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData)
 {
 	NetworkPacket packet;
 	packet.packetID = PacketID::GAME_STATE_START;
-	packet.sourcePortNumber = port;
+	packet.sourcePortNumber = serverPort;
 	packet.destinationPortNumber = address.sin_port;
 	PackPlayerData(packet, playerData);
 	SendPacket(socket, address, packet);
 }
 
-void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData) 
+void ReceiveGameStateStart(SOCKET socket, PlayerData& player) 
 {
 	sockaddr_in address{};
 	NetworkPacket packet = ReceivePacket(socket, address);
@@ -412,13 +435,13 @@ void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData)
 	if (packet.packetID == PacketID::GAME_STATE_START)
 	{
 		std::cout << "Game started. Initial game state: " << packet.data << std::endl;
-		UnpackPlayerData(packet, clientData);
-		std::cout << "Initial Player Position: " << clientData.posX << " " << clientData.posY << std::endl;
+		UnpackPlayerData(packet, player);
+		std::cout << "Initial Player Position: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
 }
 
 
-void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients, std::map<uint16_t, PlayerData>& playersData)
+void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 {
 	while (true)
 	{
@@ -426,16 +449,13 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients,
 
 		for (auto& [portID, clientAddr] : clients)
 		{
-			if (playersData.count(portID) == 0)
-				continue; // Skip if no player data
-
 			NetworkPacket responsePacket;
 			responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
-			responsePacket.sourcePortNumber = port;			// Server's port
-			responsePacket.destinationPortNumber = portID;	// Client's port
+			responsePacket.sourcePortNumber = serverPort;			// Server's port
+			responsePacket.destinationPortNumber = portID;			// Client's port
 
 			{
-				PackPlayerData(responsePacket, playersData[portID]);
+				PackGameStateData(responsePacket, gameDataState);
 				SendPacket(socket, clientAddr, responsePacket);
 			}
 
@@ -444,15 +464,22 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients,
 }
 
 // Thread function to receive packets continuously
-void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& clientData)
+void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 {
 	while (true)
 	{
 		NetworkPacket receivedPacket = ReceivePacket(socket, serverAddr);
 		if (receivedPacket.packetID == GAME_STATE_UPDATE)
 		{
-			UnpackPlayerData(receivedPacket, clientData);
-			std::cout << "New Position: " << clientData.posX << " " << clientData.posY << std::endl;
+			UnpackGateStateData(receivedPacket);
+			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+			{
+				if (gameDataState.objects[i].type == ObjectType::OBJ_SHIP)
+				{
+					std::cout << "Player " << i << " position: ";
+					std::cout << gameDataState.objects[i].transform.position.x << " " << gameDataState.objects[i].transform.position.y << std::endl;
+				}
+			}
 		}
 	}
 }

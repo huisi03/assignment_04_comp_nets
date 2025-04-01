@@ -35,6 +35,9 @@ struct NetworkTransform
 	AEVec2 velocity;				// velocity of the object
 	float rotation;					// rotation of the object
 	AEVec2 scale;					// scale of the object (should rarely be changed)
+	NetworkTransform() : position{}, velocity{}, rotation{}, scale{} {}
+	NetworkTransform(AEVec2 pos, AEVec2 vel, float _rotation, AEVec2 _scale)
+		: position{ pos }, velocity{ vel }, rotation{ _rotation }, scale{ _scale } {}
 };
 
 // Struct to represent a networked object with an identifier and transformation data
@@ -47,6 +50,7 @@ struct NetworkObject
 // Struct to represent player data in the game
 struct NetworkPlayerData
 {
+	NetworkPlayerData() : identifier{}, score{}, lives{} {}
 	uint32_t identifier;			// unique player id (Can use Port Number)
 	uint32_t score;					// player score
 	uint32_t lives;					// number of lives left
@@ -80,12 +84,12 @@ struct NetworkLeaderboard
 // Main game state, including both player data and objects in the game world
 struct NetworkGameState
 {
-	uint32_t sequenceNumber;
+	uint32_t sequenceNumber{};
 
-	uint32_t playerCount;
+	uint32_t playerCount{};
 	NetworkPlayerData playerData[MAX_PLAYERS];
 
-	uint32_t objectCount;
+	uint32_t objectCount{};
 	NetworkObject objects[MAX_NETWORK_OBJECTS];
 };
 #pragma pack()

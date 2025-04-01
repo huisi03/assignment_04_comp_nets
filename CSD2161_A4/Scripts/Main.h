@@ -35,5 +35,8 @@ extern int		pFont; // this is for the font which is used to display the text.
 #include "Collision.h"				// collision
 #include "GameState_Mainmenu.h"     //Main Menu
 #include <iostream>
+#include "GameData.h"
+
+struct PlayerData;
 
 #endif // CSD1130_MAIN_H_
