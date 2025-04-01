@@ -50,7 +50,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	#endif
 
 	// Attach a console for input/output
-	AttachConsoleWindow();
+	AttachConsoleWindow(); //hello
 
 	// Initialize network
 	if (InitialiseNetwork() != 0)
