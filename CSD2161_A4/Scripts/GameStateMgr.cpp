@@ -15,6 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 
 #include "GameStateMgr.h"			// main header
 #include "GameState_Asteroids.h"	// game state
+#include "GameState_Lobby.h"
 #include <AEEngine.h>
 #include "Main.h"
 
@@ -97,6 +98,14 @@ void GameStateMgrUpdate()
 			GameStateFree = GameStateMainMenuFree;
 			GameStateUnload = GameStateMainMenuUnload;
 			break;
+        case GS_LOBBY:
+            GameStateLoad = GameStateLobbyLoad;
+            GameStateInit = GameStateLobbyInit;
+            GameStateUpdate = GameStateLobbyUpdate;
+            GameStateDraw = GameStateLobbyDraw;
+            GameStateFree = GameStateLobbyFree;
+            GameStateUnload = GameStateLobbyUnload;
+            break;
 		// exception
 		default:
 			AE_FATAL_ERROR("invalid state!!");

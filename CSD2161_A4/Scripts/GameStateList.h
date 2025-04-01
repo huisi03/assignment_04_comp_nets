@@ -23,7 +23,7 @@ enum
 {
 	// list of all game states 
 	GS_ASTEROIDS = 0, 
-	
+    GS_LOBBY,
 	// special game state. Do not change
 	GS_RESTART,
 	GS_QUIT, 

@@ -22,6 +22,7 @@
     <ClCompile Include="Scripts\Collision.cpp" />
     <ClCompile Include="Scripts\GameStateMgr.cpp" />
     <ClCompile Include="Scripts\GameState_Asteroids.cpp" />
+    <ClCompile Include="Scripts\GameState_Lobby.cpp" />
     <ClCompile Include="Scripts\GameState_MainMenu.cpp" />
     <ClCompile Include="Scripts\Network.cpp" />
     <ClCompile Include="Scripts\Main.cpp" />
@@ -31,6 +32,7 @@
     <ClInclude Include="Scripts\GameStateList.h" />
     <ClInclude Include="Scripts\GameStateMgr.h" />
     <ClInclude Include="Scripts\GameState_Asteroids.h" />
+    <ClInclude Include="Scripts\GameState_Lobby.h" />
     <ClInclude Include="Scripts\GameState_MainMenu.h" />
     <ClInclude Include="Scripts\Network.h" />
     <ClInclude Include="Scripts\Main.h" />
