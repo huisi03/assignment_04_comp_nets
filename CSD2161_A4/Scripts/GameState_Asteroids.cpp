@@ -159,6 +159,10 @@ static unsigned long		sScore;										// Current score
 const char*					pFontURL = "Resources/Arial Italic.ttf";	// font url
 s8							pFont;										// current font selected
 
+//ensures the leaderboard is updated only once when game over triggers.
+//after submission, the flag is set to true — so all future frames skip the submission.
+//prevent from dulpicate saves
+static bool scoreAlreadySubmitted = false;
 // ---------------------------------------------------------------------------
 
 // functions to create/destroy a game object instance
@@ -386,6 +390,7 @@ void GameStateAsteroidsInit(void)
 	sShipLives  = SHIP_INITIAL_NUM;
 	High_Score = LoadHighScore();  // Load the high score when the game starts 
 	
+	LoadLeaderboard();
 }
 
 /******************************************************************************/
@@ -401,6 +406,7 @@ void GameStateAsteroidsUpdate(void)
 		if (AEInputCheckTriggered(AEVK_R))
 		{
 			gGameStateCurr = GS_RESTART;
+			scoreAlreadySubmitted = false;
 		}
 		return;
 	}
@@ -788,8 +794,12 @@ void GameStateAsteroidsDraw(void)
 		printf("New High Score: %lu\n", High_Score);  // Print it in console 
 	}
 
+	
+
 	if (sShipLives < 0)
 	{
+		
+
 		sprintf_s(strBuffer, "Game Over");
 		AEVec2Set(&pos, 0, 50);
 		RenderText(pos, 36, strBuffer);
@@ -801,32 +811,27 @@ void GameStateAsteroidsDraw(void)
 		sprintf_s(strBuffer, "Press R to try again!");
 		AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
 		RenderText(pos, 36, strBuffer);
-		// add the score to the leaderboard
-		std::string timestamp = getCurrentTimeStamp(); 
-		//uint32_t playerIdentifier = currentGameState.playerData[0].identifier;  
-		//std::string playerName = currentGameState.playerData[0].name;
-		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data  
-		// save the leaderboard to file
-		SaveLeaderboard();
 
-		// load the leaderboard when the game is over
-		LoadLeaderboard();
+		if (!scoreAlreadySubmitted)
+		{
+			std::string timestamp = getCurrentTimeStamp();
+			AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str());
+			SaveLeaderboard();
+			scoreAlreadySubmitted = true;
+		}
 
-		// adjust count based on how many you want to display
+		// Display the leaderboard
 		std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
-
-		// show leaderboard
 		int yOffset = -150; // starting position for leaderboard display
 		for (const auto& scoreEntry : topScores)
 		{
 			sprintf_s(strBuffer, "%s", scoreEntry.c_str());
-			//AEVec2Set(&pos, 0, yOffset);
-			AEVec2Set(&pos, static_cast<f32>(0), static_cast<f32>(yOffset));
+			AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
 			RenderText(pos, 24, strBuffer);
-			yOffset -= 60; // Adjust the Y position for each leaderboard entry
+			yOffset -= 60; // space between entries
 		}
-
 	}
+
 	else
 	{
 		sprintf_s(strBuffer, "Score: %d", sScore);
