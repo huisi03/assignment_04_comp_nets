@@ -122,7 +122,43 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
         BeginGameLoop(instanceH, show);
         
 
-		Disconnect();
+		ReceiveGameStateStart(udpClientSocket, clientData);
+
+		// Start the background thread for listening to game state updates
+		std::thread receiveThread(ListenForUpdates, udpClientSocket, serverTargetAddress, std::ref(clientData));
+		receiveThread.detach(); // Detach it to run in background
+
+		// Start the background thread for rendering on the client side
+		std::thread renderThread(Render, std::ref(gameDataState));
+		renderThread.detach(); // Detach it to run in background
+
+		HWND clientWindow = GetConsoleWindow();
+
+		while (true)
+		{
+			// For multiple client on the same computer
+			if (GetForegroundWindow() != clientWindow)
+			{
+				Sleep(10); // Small delay to avoid 100% CPU usage
+				continue;
+			}
+
+			// Handle input
+			NetworkPacket packet;
+			packet.packetID = InputKey::NONE;
+
+			if (GetAsyncKeyState(VK_UP) & 0x8000)      packet.packetID = InputKey::UP;
+			else if (GetAsyncKeyState(VK_DOWN) & 0x8000) packet.packetID = InputKey::DOWN;
+			else if (GetAsyncKeyState(VK_LEFT) & 0x8000) packet.packetID = InputKey::LEFT;
+			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
+			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
+
+			packet.sourcePortNumber = GetClientPort();
+			packet.destinationPortNumber = serverTargetAddress.sin_port;
+			SendPacket(udpClientSocket, serverTargetAddress, packet);
+		}
+
+		Disconnect(udpClientSocket);
 	}
 	else if (networkType == NetworkType::SINGLE_PLAYER)
 	{

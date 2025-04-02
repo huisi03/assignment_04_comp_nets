@@ -123,7 +123,8 @@ void SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendInput(SOCKET socket, sockaddr_in address);
-void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet);
+void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<uint16_t, PlayerData>& playersData);
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet);
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address);
 bool HandleGameStateStart(NetworkPacket recvPkt);
