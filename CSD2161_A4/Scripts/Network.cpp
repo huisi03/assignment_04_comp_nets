@@ -270,16 +270,14 @@ void PackPlayerData(NetworkPacket& packet, const PlayerData& player)
 	std::lock_guard<std::mutex> lock(packetMutex);
 	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
 	memcpy(packet.data, &player, sizeof(PlayerData)); // Copy struct into buffer
-	std::cout << "Unpacked: PosX=" << player.transform.position.x << ", PosY=" << player.transform.position.y
-		<< ", VelX=" << player.transform.velocity.x << ", VelY=" << player.transform.velocity.y << std::endl;
 }
 
-void PackGameStateData(NetworkPacket& packet, const NetworkGameState& player)
+void PackGameStateData(NetworkPacket& packet, const NetworkGameState& gameState)
 {
 	std::lock_guard<std::mutex> lock1(packetMutex);
 	std::lock_guard<std::mutex> lock2(gameDataMutex);
 	memset(packet.data, 0, DEFAULT_BUFLEN); // Ensure buffer is cleared
-	memcpy(packet.data, &player, sizeof(NetworkGameState)); // Copy struct into buffer
+	memcpy(packet.data, &gameState, sizeof(NetworkGameState)); // Copy struct into buffer
 }
 
 
@@ -384,31 +382,32 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 
 void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData)
 {
+	// Note: Uncomment to test if the keys are working correctly
 	std::lock_guard<std::mutex> lock(playerDataMutex);
 	PlayerInput& playerInput = playerInputMap[clientPortID];
 	if (packet.packetID == InputKey::NONE)
 	{
-		playersData[clientPortID].transform.velocity = { 0, 0 };
+		//playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		playersData[clientPortID].transform.position = { 10, 10 };
+		//playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		playersData[clientPortID].transform.position = { 20, 20 };
+		//playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
-		playersData[clientPortID].transform.position = { 30, 30 };
+		//playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
-		playersData[clientPortID].transform.position = { 40, 40 };
+		//playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
 	else if (packet.packetID == InputKey::SPACE)
@@ -427,7 +426,7 @@ void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerDa
 	SendPacket(socket, address, packet);
 }
 
-void ReceiveGameStateStart(SOCKET socket, PlayerData& player) 
+void ReceiveGameStateStart(SOCKET socket, PlayerData& player)
 {
 	sockaddr_in address{};
 	NetworkPacket packet = ReceivePacket(socket, address);
@@ -447,19 +446,21 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 	{
 		Sleep(16); // Approx 60 updates per second (1000ms / 60)
 
+		// 1. **Send the full game state to all clients**
+		NetworkPacket responsePacket;
+		responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
+		responsePacket.sourcePortNumber = serverPort;					// Server's port
+
+		PackGameStateData(responsePacket, gameDataState);
+
 		for (auto& [portID, clientAddr] : clients)
 		{
-			NetworkPacket responsePacket;
-			responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
-			responsePacket.sourcePortNumber = serverPort;			// Server's port
-			responsePacket.destinationPortNumber = portID;			// Client's port
-
 			{
-				PackGameStateData(responsePacket, gameDataState);
+				responsePacket.destinationPortNumber = portID;			// Client's port
 				SendPacket(socket, clientAddr, responsePacket);
 			}
-
 		}
+
 	}
 }
 
@@ -474,12 +475,71 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 			UnpackGateStateData(receivedPacket);
 			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
 			{
-				if (gameDataState.objects[i].type == ObjectType::OBJ_SHIP)
+				if (gameDataState.objects[i].type == ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == clientPort)
 				{
-					std::cout << "Player " << i << " position: ";
-					std::cout << gameDataState.objects[i].transform.position.x << " " << gameDataState.objects[i].transform.position.y << std::endl;
+					player.transform = gameDataState.objects[i].transform;
+					for (int j = 0; j < static_cast<int>(gameDataState.playerCount); ++j)
+					{
+						if (gameDataState.playerData[j].identifier == clientPort)
+						{
+							player.stats = gameDataState.playerData[j];
+						}
+					}
 				}
 			}
 		}
+		std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
+
+}
+
+
+void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
+{
+
+	UNREFERENCED_PARAMETER(clients);
+
+	while (true)
+	{
+
+
+
+
+
+
+
+
+
+
+		// Set the player data inside the gameState
+		for (auto& [portID, playerData] : playerDataMap)
+		{
+			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+			{
+				if (gameDataState.objects[i].type == ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == portID)
+				{
+					gameDataState.objects[i].transform = playerData.transform;
+					for (int j = 0; j < static_cast<int>(gameDataState.playerCount); ++j)
+					{
+						if (gameDataState.playerData[j].identifier == portID)
+						{
+							gameDataState.playerData[j] = playerData.stats;
+							break;
+						}
+					}
+					break;
+				}
+			}
+			std::cout << "Client: " << portID << " position: " << playerData.transform.position.x << " " << playerData.transform.position.y << std::endl;
+		}
+		
+
+	}
+
+}
+
+
+void Render(NetworkGameState& gameState)
+{
+	UNREFERENCED_PARAMETER(gameState);
 }

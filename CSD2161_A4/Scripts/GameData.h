@@ -23,7 +23,6 @@ struct PlayerData
 	PlayerData() = default;
 	PlayerData(AEVec2 pos, AEVec2 scale)
 		: transform{ pos, {0, 0}, 0.0f, scale }, stats{} {}
-
 	NetworkTransform transform;
 	NetworkPlayerData stats;
 };

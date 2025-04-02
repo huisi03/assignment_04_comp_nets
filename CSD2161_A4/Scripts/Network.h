@@ -126,6 +126,9 @@ void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData);
 void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
 void ListenForUpdates(SOCKET udpSocket, sockaddr_in serverAddr, PlayerData& clientData);
 
+void GameLoop(std::map<uint16_t, sockaddr_in>& clients);
+void Render(NetworkGameState& gameState);
+
 uint16_t GetClientPort();
 
 #endif

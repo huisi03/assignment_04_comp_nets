@@ -144,6 +144,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 						static int i = 0;
 						gameDataState.objects[i].transform.position = data.transform.position;
 						gameDataState.objects[i].type = ObjectType::OBJ_SHIP;
+						gameDataState.objects[i].identifier = port;
 						++i;
 					}
 
@@ -159,6 +160,11 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::thread gameStateThread(BroadcastGameState, udpServerSocket, std::ref(clients));
 		// Run in the background
 		gameStateThread.detach(); 
+
+		// Start a thread to calculate the Game Loop
+		std::thread gameLoopState(GameLoop, std::ref(clients));
+		// Run in the background
+		gameLoopState.detach();
 
 		// After game starts, wait for all threads to finish
 		for (auto& [p, thread] : clientThreads)
@@ -191,19 +197,14 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::thread receiveThread(ListenForUpdates, udpClientSocket, serverTargetAddress, std::ref(clientData));
 		receiveThread.detach(); // Detach it to run in background
 
-		HWND clientWindow = GetConsoleWindow();
+		// Start the background thread for rendering on the client side
+		std::thread renderThread(Render, std::ref(gameDataState));
+		renderThread.detach(); // Detach it to run in background
 
 		while (true)
 		{
-			// For multiple client on the same computer
-			if (GetForegroundWindow() != clientWindow)
-			{
-				Sleep(10); // Small delay to avoid 100% CPU usage
-				continue;
-			}
 
 			// Handle input
-
 			NetworkPacket packet;
 			packet.packetID = InputKey::NONE;
 

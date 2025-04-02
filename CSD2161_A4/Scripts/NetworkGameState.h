@@ -44,6 +44,7 @@ struct NetworkTransform
 struct NetworkObject
 {
 	ObjectType type;				// type of object
+	uint16_t identifier;			// store the portID if needed 
 	NetworkTransform transform;		// object transform
 };
 
