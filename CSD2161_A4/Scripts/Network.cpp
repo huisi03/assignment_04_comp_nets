@@ -366,7 +366,7 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 			// Ensure the player's data exists
 			if (playersData.count(clientPortID))
 			{
-				HandlePlayerInput(clientPortID, gamePacket, playersData);
+				HandlePlayerInput(clientPortID, gamePacket);
 			}
 			else
 			{
@@ -380,7 +380,7 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 	}
 }
 
-void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData)
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet)
 {
 	// Note: Uncomment to test if the keys are working correctly
 	std::lock_guard<std::mutex> lock(playerDataMutex);
