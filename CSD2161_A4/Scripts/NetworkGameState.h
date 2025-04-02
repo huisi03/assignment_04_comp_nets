@@ -14,9 +14,6 @@ prior written consent of DigiPen Institute of Technology is prohibited.
  */
  /******************************************************************************/
 
-#ifndef NETWORK_GAME_STATE
-#define NETWORK_GAME_STATE // header guard
-
 #include <iostream>					// std::cout, uint32_t
 #include <AEEngine.h>				// AEVec2
 #include <vector>					// std::vector
@@ -25,34 +22,26 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <fstream>					// std::ifstream, std::ofstream
 #include <sstream>					// std::osstream
 
-#include "GameObjects.h"			// enum list of game objects
-
 #pragma pack(1)
 // Struct to hold the transformation data of a networked object
 struct NetworkTransform
 {
 	AEVec2 position;				// position of the object
 	AEVec2 velocity;				// velocity of the object
-	float rotation;					// rotation of the object
 	AEVec2 scale;					// scale of the object (should rarely be changed)
-	NetworkTransform() : position{}, velocity{}, rotation{}, scale{} {}
-	NetworkTransform(AEVec2 pos, AEVec2 vel, float _rotation, AEVec2 _scale)
-		: position{ pos }, velocity{ vel }, rotation{ _rotation }, scale{ _scale } {}
 };
 
 // Struct to represent a networked object with an identifier and transformation data
 struct NetworkObject
 {
-	ObjectType type;				// type of object
-	uint16_t identifier;			// store the portID if needed 
+	uint32_t identifier;			// unique object id
 	NetworkTransform transform;		// object transform
 };
 
 // Struct to represent player data in the game
 struct NetworkPlayerData
 {
-	NetworkPlayerData() : identifier{}, score{}, lives{} {}
-	uint32_t identifier;			// unique player id (Can use Port Number)
+	uint32_t identifier;			// unique player id
 	uint32_t score;					// player score
 	uint32_t lives;					// number of lives left
 };
@@ -65,7 +54,7 @@ struct NetworkPlayerData
 // Struct to represent a player's score and additional data for the leaderboard
 struct NetworkScore
 {
-	uint32_t identifier;			// unique player id (Can use Port Number)
+	uint32_t identifier;			// unique player id
 	char name[MAX_NAME_LENGTH];		// player name
 	uint32_t score;					// player score
 	char timestamp[TIME_FORMAT];	// time stamp of the achieved score
@@ -78,19 +67,18 @@ struct NetworkLeaderboard
 	NetworkScore scores[MAX_LEADERBOARD_SCORES];
 };
 
-// NOTE: 44 is the maximum number of networks objects that fit one UDP pakcet
-#define MAX_NETWORK_OBJECTS		40		// maximum number of objects
+#define MAX_NETWORK_OBJECTS		32		// maximum number of objects
 #define MAX_PLAYERS				4		// maximum number of players in a lobby
 
 // Main game state, including both player data and objects in the game world
 struct NetworkGameState
 {
-	uint32_t sequenceNumber{};
+	uint32_t sequenceNumber;
 
-	uint32_t playerCount{};
+	uint32_t playerCount;
 	NetworkPlayerData playerData[MAX_PLAYERS];
 
-	uint32_t objectCount{};
+	uint32_t objectCount;
 	NetworkObject objects[MAX_NETWORK_OBJECTS];
 };
 #pragma pack()
@@ -103,15 +91,21 @@ extern NetworkGameState currentGameState;
 extern std::mutex leaderboardMutex;
 extern NetworkLeaderboard leaderboard;
 
-// For serever
-// Functions to configure network data
-void ClearNetworkData();
-bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
-bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
+// Function to set the position, velocity, and scale of a networked object
+// Returns false if the object data could not be set
+bool SetNetworkObject(uint32_t identifier, AEVec2 const& position, AEVec2 const& velocity, AEVec2 const& scale);
 
-// For client
-// Function to get the player data
-NetworkPlayerData GetNetworkPlayerData(uint32_t identifier);
+// Function to get the position, velocity, and scale of a networked object
+// Returns false if the object data does not exist
+bool GetNetworkObject(uint32_t identifier, AEVec2& position, AEVec2& velocity, AEVec2& scale);
+
+// Function to set the player's score and lives data in the networked game state
+// Returns false if the player data could not be set
+bool SetNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
+
+// Function to get the player's score and lives data from the networked game state
+// Returns false if the player data does not exist
+bool GetNetworkPlayerData(uint32_t identifier, uint32_t& score, uint32_t& lives);
 
 // Function to add a new score to the leaderboard, replacing the lowest score if necessary
 // Returns false if the score cannot be added (e.g., it's not high enough)
@@ -130,6 +124,3 @@ std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount = 5);
 // Function to apply a correction of the object's current value with the expected value on
 // the network side
 void ApplySmoothCorrection(AEVec2& current, AEVec2 expected, float smoothingFactor = 0.3f, float maxCorrection = 0.5f);
-void ApplySmoothCorrection(float& current, float expected, float smoothingFactor = 0.3f, float maxCorrection = 0.5f);
-
-#endif

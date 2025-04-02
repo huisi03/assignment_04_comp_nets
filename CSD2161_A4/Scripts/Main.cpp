@@ -15,10 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 /******************************************************************************/
 
 #include "Network.h"	// networking for multiplayer
-
 #include "Main.h"		// main headers
-#include <thread>
-#include <atomic>
 
 #include <memory>		// for memory leaks
 
@@ -68,19 +65,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
         gameType = GameType::SERVER;
 
 		std::cout << "Processing Server..." << std::endl;
-		
-		sockaddr_in address{};
-		std::map<uint16_t, sockaddr_in> clients;
-		std::unordered_map<uint16_t, std::thread> clientThreads;
 
-		int clientsRequired = 2;
-		int clientCount = 0;
-
-		bool gameStarted = false; // Add a flag
-
-		while (!gameStarted)
-		{
-			NetworkPacket packet = ReceivePacket(udpServerSocket, address);
+        int clientsRequired = 2;
+        bool is_game_start = false;
 
 		while (true) {
 
@@ -109,74 +96,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 				for (sockaddr_in const addr : clientsJoiningGame)
 				{
-					// ignore request, lobby is full
-					continue;
-				}
-
-				HandleJoinRequest(udpServerSocket, address, packet);
-
-				// Check if the client is in the map already
-				if (clients.count(packet.sourcePortNumber) == false)
-				{
-					// Add the client port to IP to map
-					clients[packet.sourcePortNumber] = address;
-					++clientCount;
-
-					// Create the player data and store it with the port number as key
-					switch (clientCount)
-					{
-						case 1:
-						{
-							AEVec2 posVec{ 100, 100 };
-							AEVec2 scaleVec{ 16, 16 };
-
-							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
-							break;
-						}
-						case 2:
-						{
-							AEVec2 posVec{ 200, 200 };
-							AEVec2 scaleVec{ 16, 16 };
-
-							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
-							break;
-						}
-					}
-					std::cout << "Num Players: " << playerDataMap.size() << std::endl;
-				}
-				
-				// Can start game when players is max
-				if (clientCount == clientsRequired)
-				{
-					// Stop accepting new clients
-					gameStarted = true; 
-
-					for (auto& [p, addr] : clients)
-					{
-						if (playerDataMap.count(p)) // Check if key 'p' exists in the map
-						{
-							SendGameStateStart(udpServerSocket, addr, playerDataMap[p]);
-							// Start a thread for each client
-							clientThreads[p] = std::thread(HandleClientInput, udpServerSocket, p, std::ref(playerDataMap));
-						}
-						else
-						{
-							std::cerr << "Player " << p << " not found in playersData!" << std::endl;
-						}
-					}
-					// Setting the game state for all objects
-					gameDataState.playerCount = gameDataState.objectCount = clientCount;
-
-					// Set the player as the object in the game state
-					for (auto& [port, data] : playerDataMap)
-					{
-						static int i = 0;
-						gameDataState.objects[i].transform.position = data.transform.position;
-						gameDataState.objects[i].type = ObjectType::OBJ_SHIP;
-						gameDataState.objects[i].identifier = port;
-						++i;
-					}
-
+					SendGameStateStart(udpServerSocket, addr);
 				}
                 is_game_start = true;
                                 
@@ -191,23 +111,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                 
 		}
 
-		// Start a thread to broadcast the game state
-		std::thread gameStateThread(BroadcastGameState, udpServerSocket, std::ref(clients));
-		// Run in the background
-		gameStateThread.detach(); 
-
-		// Start a thread to calculate the Game Loop
-		std::thread gameLoopState(GameLoop, std::ref(clients));
-		// Run in the background
-		gameLoopState.detach();
-
-		// After game starts, wait for all threads to finish
-		for (auto& [p, thread] : clientThreads)
-		{
-			if (thread.joinable())
-				thread.join();
-		}
-		Disconnect(udpServerSocket);
+		Disconnect();
 	}
 	else if (networkType == NetworkType::CLIENT)
 	{
@@ -215,51 +119,10 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		std::cout << "Processing Client..." << std::endl;
 
-        //BeginGameLoop(instanceH, show);
+        BeginGameLoop(instanceH, show);
         
-		
-		SendJoinRequest(udpClientSocket, serverTargetAddress);
 
-		NetworkPacket responsePacket = ReceivePacket(udpClientSocket, serverTargetAddress);
-		if (responsePacket.destinationPortNumber == serverPort && responsePacket.packetID == REQUEST_ACCEPTED)
-		{
-			std::cout << "Joined the lobby successfully!" << std::endl;
-			std::cout << "Waiting for lobby to start..." << std::endl;
-		}
-		else
-		{
-			std::cerr << "Failed to join lobby" << std::endl;
-		}
-
-		ReceiveGameStateStart(udpClientSocket, clientData);
-
-		// Start the background thread for listening to game state updates
-		std::thread receiveThread(ListenForUpdates, udpClientSocket, serverTargetAddress, std::ref(clientData));
-		receiveThread.detach(); // Detach it to run in background
-
-		// Start the background thread for rendering on the client side
-		std::thread renderThread(Render, std::ref(gameDataState));
-		renderThread.detach(); // Detach it to run in background
-
-		while (true)
-		{
-
-			// Handle input
-			NetworkPacket packet;
-			packet.packetID = InputKey::NONE;
-
-			if (GetAsyncKeyState(VK_UP) & 0x8000)      packet.packetID = InputKey::UP;
-			else if (GetAsyncKeyState(VK_DOWN) & 0x8000) packet.packetID = InputKey::DOWN;
-			else if (GetAsyncKeyState(VK_LEFT) & 0x8000) packet.packetID = InputKey::LEFT;
-			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
-			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
-
-			packet.sourcePortNumber = GetClientPort();
-			packet.destinationPortNumber = serverTargetAddress.sin_port;
-			SendPacket(udpClientSocket, serverTargetAddress, packet);
-		}
-
-		Disconnect(udpClientSocket);
+		Disconnect();
 	}
 	else if (networkType == NetworkType::SINGLE_PLAYER)
 	{

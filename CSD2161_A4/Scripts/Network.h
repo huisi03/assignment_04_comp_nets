@@ -21,10 +21,8 @@
 #include <fstream>			// file stream
 #include <map>	            // map
 #include <mutex>			// mutex
-#include <unordered_map>    // unordered map
-#include <AEEngine.h>		// AEVec2
-#include "Math.h"
-#include "GameData.h"
+#include <set>              // set
+#include <vector>           // vector
 
 #undef WINSOCK_VERSION		// fix for macro redefinition
 #define WINSOCK_VERSION     2
@@ -73,46 +71,35 @@ enum CommandID
     ERROR_PKT = 0x51
 };
 
-enum InputKey
-{
-    NONE,
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-    SPACE
-};
-
-enum Datatype
-{
-    PLAYER,
-    BULLET,
-    ASTEROID,
-    SCORE
-};
-
 struct NetworkPacket
 {
-    NetworkPacket()
-    {
-        memset(data, 0, DEFAULT_BUFLEN);  // Ensures data is fully null-terminated
-    }
-
-    uint16_t packetID;
-    uint16_t sourcePortNumber;
-    uint16_t destinationPortNumber;
-    char data[DEFAULT_BUFLEN];
+    uint8_t commandID = UNKNOWN;
+    uint8_t flags = 0;
+    uint32_t seqNumber;
+    uint32_t dataLength = 0;
+    char data[DEFAULT_BUFLEN]{ 0 };
 };
-
-struct PlayerData;
 
 // Global variables
 extern NetworkType networkType;
-extern sockaddr_in serverTargetAddress;
-extern sockaddr_in clientTargetAddress;
-extern uint16_t serverPort;
-extern SOCKET udpServerSocket;
-extern SOCKET udpClientSocket;
+extern uint32_t nextSeqNum;
+extern uint32_t sendBase;
+extern uint32_t recvBase;
+extern std::map<uint32_t, NetworkPacket> sendBuffer;               // Packets awaiting ACK
+extern std::set<uint32_t> ackedPackets;                            // Tracks received ACKs
+extern std::map<uint32_t, NetworkPacket> recvBuffer;               // Stores received packets
+extern std::map<uint32_t, uint64_t> timers;                        // Timeout tracking for packets waiting to be ACK-ed
+extern std::vector<sockaddr_in> clientTargetAddresses;             // used for NetworkType::SERVER to keep track of connect clients
+extern std::vector<sockaddr_in> clientsJoiningGame;                // used for NetworkType::SERVER to keep track of clients req to join
+extern sockaddr_in serverTargetAddress;                            // used for NetworkType::CLIENT
+extern uint16_t serverPort;                                        // used for NetworkType::CLIENT
+extern uint16_t clientPort;                                        // used for NetworkType::SERVER
+extern SOCKET udpClientSocket;                                     // used for NetworkType::CLIENT
+extern SOCKET udpServerSocket;                                     // used for NetworkType::SERVER
+
+extern const std::string configFileRelativePath;
+extern const std::string configFileServerIp;
+extern const std::string configFileServerPort;
 
 void AttachConsoleWindow();
 void FreeConsoleWindow();
@@ -120,36 +107,26 @@ void FreeConsoleWindow();
 int InitialiseNetwork();
 int StartServer();
 int ConnectToServer();
-void Disconnect(SOCKET& socket);
+void Disconnect();
 
 bool SendAck(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 void RetransmitPacket();
 bool SendPacket(SOCKET socket, sockaddr_in address, NetworkPacket packet, bool is_retransmit);
 NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address);
 
-void PackPlayerData(NetworkPacket& packet, const PlayerData& player);
-void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player);
+void SendQuitRequest(SOCKET socket, sockaddr_in address);
+void HandleQuitRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
-void PackGameStateData(NetworkPacket& packet, const NetworkGameState& player);
-void UnpackGateStateData(const NetworkPacket& packet);
+void HandleConnectionRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
 void SendInput(SOCKET socket, sockaddr_in address);
-void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<uint16_t, PlayerData>& playersData);
-void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData);
+void HandlePlayerInput(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
-void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData);
-void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData);
-
-void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
-void ListenForUpdates(SOCKET udpSocket, sockaddr_in serverAddr, PlayerData& clientData);
-
-void GameLoop(std::map<uint16_t, sockaddr_in>& clients);
-void Render(NetworkGameState& gameState);
-
-uint16_t GetClientPort();
+void SendGameStateStart(SOCKET socket, sockaddr_in address);
+bool HandleGameStateStart(NetworkPacket recvPkt);
 
 // Helper functions
 uint64_t GetTimeNow();

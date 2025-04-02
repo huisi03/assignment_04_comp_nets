@@ -44,8 +44,5 @@ extern GameType gameType;
 #include "Collision.h"				// collision
 #include "GameState_Mainmenu.h"     //Main Menu
 #include <iostream>
-#include "GameData.h"
-
-struct PlayerData;
 
 #endif // CSD1130_MAIN_H_
