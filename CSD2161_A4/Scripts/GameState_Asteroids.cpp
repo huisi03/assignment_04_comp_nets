@@ -24,6 +24,9 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <ctime>  // for date and time
 #include <cstdio>
 #include <cstring>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 
 /******************************************************************************/
@@ -124,11 +127,6 @@ struct GameObjInst
 									// calculate the object instance's transformation matrix and save it here
 };
 
-// struct to hold the high score and timestamp
-struct HighScoreData {
-	unsigned long highScore;
-	char timestamp[20];  // Format: "YYYY-MM-DD HH:MM:SS"
-};
 
 /******************************************************************************/
 /*!
@@ -177,11 +175,19 @@ void				RenderText(AEVec2 position, f32 fontSize, char const* text);
 // functions to render images
 void				RenderImage(AEVec2 position, AEVec2 scale, AEGfxTexture* texture, AEGfxVertexList* mesh);
 
+std::string getCurrentTimeStamp() {
+	auto now = std::chrono::system_clock::now();
+	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+	std::ostringstream oss;
+	oss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%dT%H:%M:%S");
+	return oss.str();
+}
 
 // Function to load the high score
 unsigned long LoadHighScore()
 {
-	FILE* highscoreFile;
+	//FILE* highscoreFile;
 	//unsigned long High_Score = 0; // Default value if file cannot be read
 
 	// Open the file in read mode
@@ -207,20 +213,14 @@ unsigned long LoadHighScore()
 
 
 // Function to save the high score
-void SaveHighScore(unsigned long High_Score)
+void SaveHighScore(unsigned long highscore)
 {
-	FILE* highscoreFile;
-	// Open the file in write mode, creating it if it doesn't exist
-	fopen_s(&highscoreFile, "Resources/HighScore.txt", "w");
-
-	if (highscoreFile != NULL)
+	
+	if (fopen_s(&highscoreFile, "Resources/HighScore.txt", "w") == 0)
 	{
 		// Write the high score to the file
-		fprintf(highscoreFile, "%lu", High_Score);
-		// Close the file after writing
-		fclose(highscoreFile);
-
-		//printf("Saved High Score.\n");
+		fprintf(highscoreFile, "%lu", highscore);
+		fclose(highscoreFile); // Close the file after writing
 	}
 	else
 	{
@@ -383,7 +383,8 @@ void GameStateAsteroidsInit(void)
 	// reset the score and the number of ships
 	sScore      = 0;
 	sShipLives  = SHIP_INITIAL_NUM;
-	unsigned long High_Score = LoadHighScore();  // Load the high score when the game starts 
+	High_Score = LoadHighScore();  // Load the high score when the game starts 
+	
 }
 
 /******************************************************************************/
@@ -800,7 +801,9 @@ void GameStateAsteroidsDraw(void)
 		AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
 		RenderText(pos, 36, strBuffer);
 		// add the score to the leaderboard
-		AddScoreToLeaderboard(0, "Player", sScore, "PLACEHOLDER"); // Replace "Player" and "PLACEHOLDER" with real data 
+		std::string timestamp = getCurrentTimeStamp(); 
+		//NetworkPlayerData playerData; 
+		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data 
 		// save the leaderboard to file
 		SaveLeaderboard("leaderboard.dat");
 
@@ -815,7 +818,8 @@ void GameStateAsteroidsDraw(void)
 		for (const auto& scoreEntry : topScores)
 		{
 			sprintf_s(strBuffer, "%s", scoreEntry.c_str());
-			AEVec2Set(&pos, 0, yOffset);
+			//AEVec2Set(&pos, 0, yOffset);
+			AEVec2Set(&pos, static_cast<f32>(0), static_cast<f32>(yOffset));
 			RenderText(pos, 24, strBuffer);
 			yOffset -= 50; // Adjust the Y position for each leaderboard entry
 		}
