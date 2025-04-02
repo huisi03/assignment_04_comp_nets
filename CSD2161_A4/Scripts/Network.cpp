@@ -538,6 +538,51 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 
 }
 
+void PackLeaderboardData(NetworkPacket& packet)
+{
+	std::lock_guard<std::mutex> lock1(packetMutex);
+	std::lock_guard<std::mutex> lock2(leaderboardMutex);
+	memset(packet.data, 0, DEFAULT_BUFLEN);							// Ensure buffer is cleared
+	memcpy(packet.data, &leaderboard, sizeof(NetworkLeaderboard));	// Copy struct into buffer
+}
+
+// Unpacking the data from the network packet into the leaderboard
+void UnpackLeaderboardData(const NetworkPacket& packet)
+{
+	std::lock_guard<std::mutex> lock1(packetMutex);
+	std::lock_guard<std::mutex> lock2(gameDataMutex);
+	memcpy(&gameDataState, packet.data, sizeof(NetworkLeaderboard)); // Copy buffer back into struct
+}
+
+void BroadcastLeaderboard(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
+{
+	NetworkPacket responsePacket;
+	responsePacket.packetID = PacketID::LEADERBOARD;
+	responsePacket.sourcePortNumber = serverPort;					// Server's port
+
+	PackLeaderboardData(responsePacket);
+
+	for (auto& [portID, clientAddr] : clients)
+	{
+		{
+			responsePacket.destinationPortNumber = portID;			// Client's port
+			SendPacket(socket, clientAddr, responsePacket);
+		}
+	}
+}
+
+void ReceiveLeaderboard(SOCKET socket)
+{
+	sockaddr_in address{};
+	NetworkPacket packet = ReceivePacket(socket, address);
+
+	if (packet.packetID == PacketID::LEADERBOARD)
+	{
+		UnpackLeaderboardData(packet);
+	}
+
+	// Leaderboard is updated, can be shown to the players
+}
 
 void Render(NetworkGameState& gameState)
 {

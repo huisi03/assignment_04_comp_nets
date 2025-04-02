@@ -172,6 +172,29 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			if (thread.joinable())
 				thread.join();
 		}
+
+
+		// Collate scores onto the leaderboard
+		LoadLeaderboard();
+
+		// Get current time
+		char timeBuffer[20];
+		std::time_t currentTime = std::time(nullptr);
+		std::tm localTime;
+		localtime_s(&localTime, &currentTime);
+		std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
+
+		for (auto [id, score, lives] : gameDataState.playerData)
+		{
+			AddScoreToLeaderboard(id, "", score, timeBuffer);
+		}
+		SaveLeaderboard();
+
+		// End of game, send the final leaderboard to the clients
+		BroadcastLeaderboard(udpServerSocket, std::ref(clients));
+
+		// Show leaderboard
+
 		Disconnect(udpServerSocket);
 	}
 	else if (networkType == NetworkType::CLIENT)
@@ -226,6 +249,11 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
 			SendPacket(udpClientSocket, serverTargetAddress, packet);
 		}
+
+		// End of game, receive leaderboard
+		ReceiveLeaderboard(udpClientSocket);
+
+		// Show leaderboard
 
 		Disconnect(udpClientSocket);
 	}
