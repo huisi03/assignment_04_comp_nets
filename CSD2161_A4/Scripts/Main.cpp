@@ -96,31 +96,31 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 					// Create the player data and store it with the port number as key
 					switch (clientCount)
 					{
-						case 1:
-						{
-							AEVec2 posVec{ 100, 100 };
-							AEVec2 scaleVec{ 16, 16 };
+					case 1:
+					{
+						AEVec2 posVec{ 100, 100 };
+						AEVec2 scaleVec{ 16, 16 };
 
-							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
-							break;
-						}
-						case 2:
-						{
-							AEVec2 posVec{ 200, 200 };
-							AEVec2 scaleVec{ 16, 16 };
+						playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
+						break;
+					}
+					case 2:
+					{
+						AEVec2 posVec{ 200, 200 };
+						AEVec2 scaleVec{ 16, 16 };
 
-							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
-							break;
-						}
+						playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
+						break;
+					}
 					}
 					std::cout << "Num Players: " << playerDataMap.size() << std::endl;
 				}
-				
+
 				// Can start game when players is max
 				if (clientCount == clientsRequired)
 				{
 					// Stop accepting new clients
-					gameStarted = true; 
+					gameStarted = true;
 
 					for (auto& [p, addr] : clients)
 					{
@@ -159,7 +159,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		// Start a thread to broadcast the game state
 		std::thread gameStateThread(BroadcastGameState, udpServerSocket, std::ref(clients));
 		// Run in the background
-		gameStateThread.detach(); 
+		gameStateThread.detach();
 
 		// Start a thread to calculate the Game Loop
 		std::thread gameLoopState(GameLoop, std::ref(clients));
@@ -172,6 +172,20 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			if (thread.joinable())
 				thread.join();
 		}
+
+		// Collate scores onto the leaderboard
+		LoadLeaderboard();
+		for (auto [id, score, lives] : gameDataState.playerData)
+		{
+			AddScoreToLeaderboard(id, "", score, "");
+		}
+		SaveLeaderboard();
+
+		// End of game, send the final leaderboard to the clients
+		BroadcastLeaderboard(udpServerSocket, std::ref(clients));
+
+		// Show leaderboard
+
 		Disconnect(udpServerSocket);
 	}
 	else if (networkType == NetworkType::CLIENT)
@@ -227,6 +241,12 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			SendPacket(udpClientSocket, serverTargetAddress, packet);
 		}
 
+		// End of game, receive leaderboard
+		ReceiveLeaderboard(udpClientSocket);
+
+		// Show leaderboard
+
+		// Disconnect
 		Disconnect(udpClientSocket);
 	}
 	else if (networkType == NetworkType::SINGLE_PLAYER)

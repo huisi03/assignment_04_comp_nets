@@ -96,8 +96,8 @@ struct NetworkGameState
 #pragma pack()
 
 // Network game states (To be passed via UDP)
-extern std::mutex gameStateMutex;
-extern NetworkGameState currentGameState;
+// extern std::mutex gameStateMutex;
+// extern NetworkGameState currentGameState;
 
 // Leaderboard saved on the network
 extern std::mutex leaderboardMutex;
@@ -105,9 +105,9 @@ extern NetworkLeaderboard leaderboard;
 
 // For serever
 // Functions to configure network data
-void ClearNetworkData();
-bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
-bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
+// void ClearNetworkData();
+// bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
+// bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
 
 // For client
 // Function to get the player data

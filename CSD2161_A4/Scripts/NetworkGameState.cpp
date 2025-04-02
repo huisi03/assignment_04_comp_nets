@@ -24,54 +24,54 @@ NetworkGameState currentGameState;
 std::mutex leaderboardMutex;
 NetworkLeaderboard leaderboard;
 
-void ClearNetworkData()
-{
-	std::lock_guard<std::mutex> lock(gameStateMutex);
-	currentGameState.sequenceNumber = 0;
-	currentGameState.playerCount = 0;
-	currentGameState.objectCount = 0;
-}
-
-bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives)
-{
-	std::lock_guard<std::mutex> lock(gameStateMutex);
-
-	if (currentGameState.playerCount >= MAX_PLAYERS)
-	{
-		// No space left
-		return false; 
-	}
-
-	NetworkPlayerData& newPlayer = currentGameState.playerData[currentGameState.playerCount];
-	newPlayer.identifier = identifier;
-	newPlayer.score = score;
-	newPlayer.lives = lives;
-
-	++currentGameState.playerCount;
-	return true;
-}
-
-bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale)
-{
-	std::lock_guard<std::mutex> lock(gameStateMutex);
-
-	if (currentGameState.objectCount >= MAX_NETWORK_OBJECTS)
-	{
-		// No space left, increase MAX_NETWORK_OBJECTS if necessary
-		return false; 
-	}
-
-	NetworkObject& newObject = currentGameState.objects[currentGameState.objectCount];
-	newObject.type = type;
-	newObject.transform.position = position;
-	newObject.transform.velocity = velocity;
-	newObject.transform.rotation = rotation;
-	newObject.transform.scale = scale;
-
-	++currentGameState.objectCount;
-
-	return true;
-}
+// void ClearNetworkData()
+// {
+// 	std::lock_guard<std::mutex> lock(gameStateMutex);
+// 	currentGameState.sequenceNumber = 0;
+// 	currentGameState.playerCount = 0;
+// 	currentGameState.objectCount = 0;
+// }
+// 
+// bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives)
+// {
+// 	std::lock_guard<std::mutex> lock(gameStateMutex);
+// 
+// 	if (currentGameState.playerCount >= MAX_PLAYERS)
+// 	{
+// 		// No space left
+// 		return false; 
+// 	}
+// 
+// 	NetworkPlayerData& newPlayer = currentGameState.playerData[currentGameState.playerCount];
+// 	newPlayer.identifier = identifier;
+// 	newPlayer.score = score;
+// 	newPlayer.lives = lives;
+// 
+// 	++currentGameState.playerCount;
+// 	return true;
+// }
+// 
+// bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale)
+// {
+// 	std::lock_guard<std::mutex> lock(gameStateMutex);
+// 
+// 	if (currentGameState.objectCount >= MAX_NETWORK_OBJECTS)
+// 	{
+// 		// No space left, increase MAX_NETWORK_OBJECTS if necessary
+// 		return false; 
+// 	}
+// 
+// 	NetworkObject& newObject = currentGameState.objects[currentGameState.objectCount];
+// 	newObject.type = type;
+// 	newObject.transform.position = position;
+// 	newObject.transform.velocity = velocity;
+// 	newObject.transform.rotation = rotation;
+// 	newObject.transform.scale = scale;
+// 
+// 	++currentGameState.objectCount;
+// 
+// 	return true;
+// }
 
 NetworkPlayerData GetNetworkPlayerData(uint32_t identifier)
 {

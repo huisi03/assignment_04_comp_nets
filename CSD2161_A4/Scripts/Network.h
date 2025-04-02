@@ -52,7 +52,8 @@ enum PacketID
     REQUEST_ACCEPTED,
     GAME_INPUT,
     GAME_STATE_START,
-    GAME_STATE_UPDATE
+    GAME_STATE_UPDATE,
+    LEADERBOARD
 };
 
 enum InputKey
@@ -113,6 +114,9 @@ void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player);
 void PackGameStateData(NetworkPacket& packet, const NetworkGameState& player);
 void UnpackGateStateData(const NetworkPacket& packet);
 
+void PackLeaderboardData(NetworkPacket& packet, NetworkLeaderboard const& leaderboard);
+void UnpackLeaderboardData(NetworkPacket const& packet);
+
 void SendJoinRequest(SOCKET socket, sockaddr_in address);
 void HandleJoinRequest(SOCKET socket, sockaddr_in address, NetworkPacket packet);
 
@@ -122,6 +126,9 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet);
 
 void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerData);
 void ReceiveGameStateStart(SOCKET socket, PlayerData& clientData);
+
+void BroadcastLeaderboard(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
+void ReceiveLeaderboard(SOCKET socket);
 
 void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
 void ListenForUpdates(SOCKET udpSocket, sockaddr_in serverAddr, PlayerData& clientData);
