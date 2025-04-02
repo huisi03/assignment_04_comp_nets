@@ -24,6 +24,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <ctime>  // for date and time
 #include <cstdio>
 #include <cstring>
+#include "NetworkGameState.h"
 
 
 /******************************************************************************/
@@ -800,6 +801,27 @@ void GameStateAsteroidsDraw(void)
 		sprintf_s(strBuffer, "Press R to try again!");
 		AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
 		RenderText(pos, 36, strBuffer);
+
+		// Add the score to the leaderboard
+		AddScoreToLeaderboard(0, "Player", sScore, "PLACEHOLDER"); // Replace "Player" and "PLACEHOLDER" with real data if needed
+		// Save the leaderboard to file
+		SaveLeaderboard("leaderboard.dat");
+
+		// Load the leaderboard when the game is over
+		LoadLeaderboard("leaderboard.dat");
+
+		// Get top players from leaderboard (adjust count based on how many you want to display)
+		std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
+
+		// Display leaderboard
+		int yOffset = -150; // Starting position for leaderboard display
+		for (const auto& scoreEntry : topScores)
+		{
+			sprintf_s(strBuffer, "%s", scoreEntry.c_str());
+			AEVec2Set(&pos, 0, yOffset);
+			RenderText(pos, 24, strBuffer);
+			yOffset -= 50; // Adjust the Y position for each leaderboard entry
+		}
 	}
 	else
 	{
