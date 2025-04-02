@@ -807,10 +807,10 @@ void GameStateAsteroidsDraw(void)
 		//std::string playerName = currentGameState.playerData[0].name;
 		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data  
 		// save the leaderboard to file
-		SaveLeaderboard("leaderboard.dat");
+		SaveLeaderboard();
 
 		// load the leaderboard when the game is over
-		LoadLeaderboard("leaderboard.dat");
+		LoadLeaderboard();
 
 		// adjust count based on how many you want to display
 		std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
