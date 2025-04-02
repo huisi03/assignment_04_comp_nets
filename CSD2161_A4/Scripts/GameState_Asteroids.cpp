@@ -775,7 +775,7 @@ void GameStateAsteroidsDraw(void)
 
 	// check and update if value for score or lives changed
 	onValueChange = (scoreCache != sScore || shipLivesCache != sShipLives);
-
+	
 	// Renders text in game
 	AEVec2 pos;
 
@@ -802,7 +802,6 @@ void GameStateAsteroidsDraw(void)
 		RenderText(pos, 36, strBuffer);
 		// add the score to the leaderboard
 		std::string timestamp = getCurrentTimeStamp(); 
-		//NetworkPlayerData playerData; 
 		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data 
 		// save the leaderboard to file
 		SaveLeaderboard("leaderboard.dat");
@@ -821,7 +820,7 @@ void GameStateAsteroidsDraw(void)
 			//AEVec2Set(&pos, 0, yOffset);
 			AEVec2Set(&pos, static_cast<f32>(0), static_cast<f32>(yOffset));
 			RenderText(pos, 24, strBuffer);
-			yOffset -= 50; // Adjust the Y position for each leaderboard entry
+			yOffset -= 60; // Adjust the Y position for each leaderboard entry
 		}
 
 	}
