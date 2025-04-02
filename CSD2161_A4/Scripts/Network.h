@@ -74,24 +74,6 @@ enum Datatype
     SCORE
 };
 
-enum InputKey
-{
-    NONE,
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-    SPACE
-};
-
-enum Datatype
-{
-    PLAYER,
-    BULLET,
-    ASTEROID,
-    SCORE
-};
-
 struct NetworkPacket
 {
     NetworkPacket()

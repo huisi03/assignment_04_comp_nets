@@ -17,6 +17,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define _CRT_SECURE_NO_WARNINGS
 #include "Network.h"
 #include "GameState_Asteroids.h"
+#include "NetworkGameState.h"
 #include "GameStateMgr.h"
 #include "Collision.h"
 #include <stdio.h>
@@ -803,6 +804,7 @@ void GameStateAsteroidsDraw(void)
 		// add the score to the leaderboard
 		std::string timestamp = getCurrentTimeStamp(); 
 		//uint32_t playerIdentifier = currentGameState.playerData[0].identifier;  
+		//std::string playerName = currentGameState.playerData[0].name;
 		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data  
 		// save the leaderboard to file
 		SaveLeaderboard("leaderboard.dat");
