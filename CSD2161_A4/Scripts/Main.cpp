@@ -175,9 +175,17 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		// Collate scores onto the leaderboard
 		LoadLeaderboard();
+
+		// Get current time
+		char timeBuffer[20];
+		std::time_t currentTime = std::time(nullptr);
+		std::tm localTime;
+		localtime_s(&localTime, &currentTime);
+		std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
+
 		for (auto [id, score, lives] : gameDataState.playerData)
-		{
-			AddScoreToLeaderboard(id, "", score, "");
+		{	
+			AddScoreToLeaderboard(id, "", score, timeBuffer);
 		}
 		SaveLeaderboard();
 

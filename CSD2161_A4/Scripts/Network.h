@@ -114,7 +114,7 @@ void UnpackPlayerData(const NetworkPacket& packet, PlayerData& player);
 void PackGameStateData(NetworkPacket& packet, const NetworkGameState& player);
 void UnpackGateStateData(const NetworkPacket& packet);
 
-void PackLeaderboardData(NetworkPacket& packet, NetworkLeaderboard const& leaderboard);
+void PackLeaderboardData(NetworkPacket& packet);
 void UnpackLeaderboardData(NetworkPacket const& packet);
 
 void SendJoinRequest(SOCKET socket, sockaddr_in address);

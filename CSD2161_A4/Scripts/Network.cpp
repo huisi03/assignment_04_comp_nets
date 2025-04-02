@@ -280,7 +280,7 @@ void PackGameStateData(NetworkPacket& packet, const NetworkGameState& gameState)
 	memcpy(packet.data, &gameState, sizeof(NetworkGameState)); // Copy struct into buffer
 }
 
-void PackLeaderboardData(NetworkPacket& packet, NetworkLeaderboard const& leaderboard)
+void PackLeaderboardData(NetworkPacket& packet)
 {
 	std::lock_guard<std::mutex> lock1(packetMutex);
 	std::lock_guard<std::mutex> lock2(leaderboardMutex);
@@ -459,7 +459,7 @@ void BroadcastLeaderboard(SOCKET socket, std::map<uint16_t, sockaddr_in>& client
 	responsePacket.packetID = PacketID::LEADERBOARD;
 	responsePacket.sourcePortNumber = serverPort;					// Server's port
 
-	PackLeaderboardData(responsePacket, leaderboard);
+	PackLeaderboardData(responsePacket);
 
 	for (auto& [portID, clientAddr] : clients)
 	{
