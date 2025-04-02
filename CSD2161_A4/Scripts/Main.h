@@ -20,20 +20,28 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 //------------------------------------
 // Globals
 
+enum class GameType {
+    SINGLE_PLAYER,
+    MULTIPLAYER,
+    SERVER
+};
+
 extern float	g_dt;
 extern double	g_appTime;
 extern int		pFont; // this is for the font which is used to display the text. 
+extern GameType gameType;
 
 // ---------------------------------------------------------------------------
 // includes
 
-#include "AEEngine.h"				// alpha engine
-#include "Math.h"					// math library
+#include "AEEngine.h"				//  alpha engine
+#include "Math.h"					//  math library
 
-#include "GameStateMgr.h"			// game state manager
-#include "GameState_Asteroids.h"	// game state: asteroids
-#include "Collision.h"				// collision
-#include "GameState_Mainmenu.h"     //Main Menu
+#include "GameStateMgr.h"			//  game state manager
+#include "GameState_Asteroids.h"	//  game state: asteroids
+#include "Collision.h"				//  collision
+#include "GameState_Mainmenu.h"     //  Main Menu
+#include "GameState_Lobby.h"        //  Game Lobby
 #include <iostream>
 #include "GameData.h"
 

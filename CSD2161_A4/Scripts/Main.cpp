@@ -28,6 +28,7 @@ float	 g_dt;
 double	 g_appTime;
 int			pFont; // this is for the text
 const int	Fontsize = 25; // size of the text
+GameType    gameType;
 
 /******************************************************************************/
 /*!
@@ -62,6 +63,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	if (networkType == NetworkType::SERVER)
 	{
 		std::cout << "Processing Server..." << std::endl;
+
+        gameType = GameType::SERVER;
 		
 		sockaddr_in address{};
 		std::map<uint16_t, sockaddr_in> clients;
@@ -200,6 +203,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	else if (networkType == NetworkType::CLIENT)
 	{
 		std::cout << "Processing Client..." << std::endl;
+
+        gameType = GameType::MULTIPLAYER;
 		
 		SendJoinRequest(udpClientSocket, serverTargetAddress);
 
@@ -259,6 +264,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	}
 	else if (networkType == NetworkType::SINGLE_PLAYER)
 	{
+
+        gameType = GameType::SINGLE_PLAYER;
+
 		// Initialize the system
 		AESysInit(instanceH, show, 800, 600, 1, 60, false, NULL);
 
