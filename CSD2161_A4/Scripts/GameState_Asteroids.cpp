@@ -799,6 +799,27 @@ void GameStateAsteroidsDraw(void)
 		sprintf_s(strBuffer, "Press R to try again!");
 		AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
 		RenderText(pos, 36, strBuffer);
+		// add the score to the leaderboard
+		AddScoreToLeaderboard(0, "Player", sScore, "PLACEHOLDER"); // Replace "Player" and "PLACEHOLDER" with real data 
+		// save the leaderboard to file
+		SaveLeaderboard("leaderboard.dat");
+
+		// load the leaderboard when the game is over
+		LoadLeaderboard("leaderboard.dat");
+
+		// adjust count based on how many you want to display
+		std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
+
+		// show leaderboard
+		int yOffset = -150; // starting position for leaderboard display
+		for (const auto& scoreEntry : topScores)
+		{
+			sprintf_s(strBuffer, "%s", scoreEntry.c_str());
+			AEVec2Set(&pos, 0, yOffset);
+			RenderText(pos, 24, strBuffer);
+			yOffset -= 50; // Adjust the Y position for each leaderboard entry
+		}
+
 	}
 	else
 	{
