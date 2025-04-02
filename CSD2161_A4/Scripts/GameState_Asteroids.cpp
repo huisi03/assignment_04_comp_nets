@@ -802,7 +802,8 @@ void GameStateAsteroidsDraw(void)
 		RenderText(pos, 36, strBuffer);
 		// add the score to the leaderboard
 		std::string timestamp = getCurrentTimeStamp(); 
-		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data 
+		//uint32_t playerIdentifier = currentGameState.playerData[0].identifier;  
+		AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str()); // Replace with real data  
 		// save the leaderboard to file
 		SaveLeaderboard("leaderboard.dat");
 
