@@ -285,12 +285,10 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
             
         }
 
-        if (gGameStateCurr == GS_END_GAME) {
-            // End of game, receive leaderboard
-            ReceiveLeaderboard(udpClientSocket);
+        // End of game, receive leaderboard
+        ReceiveLeaderboard(udpClientSocket);
 
-            // Show leaderboard
-        }
+        // Show leaderboard
 
         Disconnect(udpClientSocket);
 
