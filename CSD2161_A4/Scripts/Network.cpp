@@ -17,6 +17,7 @@ std::mutex playerDataMutex;
 const std::string configFileRelativePath = "Resources/Configuration.txt";
 const std::string configFileServerIp = "serverIp";
 const std::string configFileServerPort = "serverUdpPort";
+bool clientRunning = true;
 
 
 void AttachConsoleWindow()
@@ -480,7 +481,7 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 // Thread function to receive packets continuously
 void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 {
-	while (true)
+	while (clientRunning)
 	{
 		NetworkPacket receivedPacket = ReceivePacket(socket, serverAddr);
 		if (receivedPacket.packetID == GAME_STATE_UPDATE)
@@ -512,7 +513,7 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 	using namespace std::chrono;
 	auto prevTime = high_resolution_clock::now();
 
-	while (true)
+	while (clientRunning)
 	{
 		auto currTime = high_resolution_clock::now();
 		float deltaTime = duration<float>(currTime - prevTime).count();

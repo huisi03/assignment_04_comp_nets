@@ -95,6 +95,7 @@ extern sockaddr_in clientTargetAddress;
 extern uint16_t serverPort;
 extern SOCKET udpServerSocket;
 extern SOCKET udpClientSocket;
+extern bool clientRunning;
 
 void AttachConsoleWindow();
 void FreeConsoleWindow();

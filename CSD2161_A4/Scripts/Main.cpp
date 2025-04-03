@@ -196,15 +196,15 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
 		// Start the background thread for listening to game state updates
 		std::thread receiveThread(ListenForUpdates, udpClientSocket, serverTargetAddress, std::ref(clientData));
-		receiveThread.detach(); // Detach it to run in background
+
 
 		// Start the background thread for rendering on the client side
 		std::thread renderThread(Render, instanceH, show);
-		renderThread.detach(); // Detach it to run in background
+
 
 		//HWND clientWindow = GetConsoleWindow();
 
-		while (true)
+		while (clientRunning)
 		{
 			//// For multiple client on the same computer
 			//if (GetForegroundWindow() != clientWindow)
@@ -227,6 +227,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
 			SendPacket(udpClientSocket, serverTargetAddress, packet);
 		}
+		receiveThread.join();
+		renderThread.join();
 
 		Disconnect(udpClientSocket);
 	}
@@ -368,6 +370,7 @@ void Render(HINSTANCE instanceH, int show)
 			if (AESysDoesWindowExist() == false)
 			{
 				gGameStateNext = GS_QUIT;
+				clientRunning = false;
 			}
 
 			g_dt = static_cast<f32>(AEFrameRateControllerGetFrameTime()); // get delta time
@@ -384,6 +387,7 @@ void Render(HINSTANCE instanceH, int show)
 		gGameStatePrev = gGameStateCurr;
 		gGameStateCurr = gGameStateNext;
 	}
+	
 
 	// free the system
 	AESysExit();
