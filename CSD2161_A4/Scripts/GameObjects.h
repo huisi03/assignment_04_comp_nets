@@ -15,8 +15,9 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #ifndef GAME_OBJECTS
 #define GAME_OBJECTS // header guard
 
-enum class ObjectType
+enum class ObjectType : int
 {
+    OBJ_NULL,
 	OBJ_SHIP,
 	OBJ_WALL,
 	OBJ_ASTEROID,

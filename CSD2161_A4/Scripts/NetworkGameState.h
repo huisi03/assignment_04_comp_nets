@@ -43,7 +43,7 @@ struct NetworkTransform
 // Struct to represent a networked object with an identifier and transformation data
 struct NetworkObject
 {
-	ObjectType type;				// type of object
+	int type;				// type of object
 	uint16_t identifier;			// store the portID if needed 
 	NetworkTransform transform;		// object transform
 };
@@ -107,7 +107,7 @@ extern NetworkLeaderboard leaderboard;
 // Functions to configure network data
 void ClearNetworkData();
 bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
-bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
+bool AddNetworkObject(int type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
 
 // For client
 // Function to get the player data

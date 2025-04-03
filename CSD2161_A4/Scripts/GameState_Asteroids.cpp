@@ -376,11 +376,13 @@ void GameStateAsteroidsInit(void)
     if (networkType == NetworkType::CLIENT) {
 
         // spawning the ship
-        for (auto const& [portID, player_data] : playerDataMap) {
-            AEVec2 scale;
-            AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
-            ships_multiplayer[portID] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
-            AE_ASSERT(spShip);
+        for (auto const& obj : gameDataState.objects) {
+            if (obj.type == 1) {
+                AEVec2 scale;
+                AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
+                ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+            }
+
         }
 
     }
@@ -445,38 +447,44 @@ void GameStateAsteroidsUpdate(void)
 {
 
     if (networkType == NetworkType::CLIENT) {
+
         std::cout << gameDataState.objectCount << std::endl;
         // spawning the ship
-        for (auto const& [portID, player_data] : playerDataMap) {
+      
 
-            ships_multiplayer[portID]->posPrev = ships_multiplayer[portID]->posCurr;
-            ships_multiplayer[portID]->posCurr = player_data.transform.position;
+            for (auto const& obj : gameDataState.objects) {
 
-            ships_multiplayer[portID]->velCurr = player_data.transform.velocity;
-            ships_multiplayer[portID]->dirCurr = player_data.transform.rotation;
+                if (obj.type == 1) {
 
-            ships_multiplayer[portID]->scale = player_data.transform.scale;
+                    std::cout << "IDENTIFIER: " << obj.identifier << "  x: " << obj.transform.position.x << " y: " << obj.transform.position.y << std::endl;
+                    AEVec2 scale;
+                    AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
+                    gameObjInstDestroy(ships_multiplayer[obj.identifier]);
+                   
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
 
-            AEMtx33		 trans, rot, scale;
+                    AEMtx33 trans, rot, scale_mat;
 
-            // Compute the scaling matrix
-            AEMtx33Scale(&scale, ships_multiplayer[portID]->scale.x, ships_multiplayer[portID]->scale.y);
+                    // Compute the scaling matrix
+                    AEMtx33Scale(&scale_mat, SHIP_SCALE_X, SHIP_SCALE_Y);
 
-            // Compute the rotation matrix 
-            AEMtx33Rot(&rot, ships_multiplayer[portID]->dirCurr);
+                    // Compute the rotation matrix 
+                    AEMtx33Rot(&rot, obj.transform.rotation);
 
-            // Compute the translation matrix
-            AEMtx33Trans(&trans, ships_multiplayer[portID]->posCurr.x, ships_multiplayer[portID]->posCurr.y);
+                    // Compute the translation matrix
+                    AEMtx33Trans(&trans, obj.transform.position.x, obj.transform.position.y);
 
-            // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
-            AEMtx33 result;
-            AEMtx33Concat(&result, &rot, &scale);
-            AEMtx33Concat(&result, &trans, &result);
+                    // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
+                    AEMtx33 result;
+                    AEMtx33Concat(&result, &rot, &scale_mat);
+                    AEMtx33Concat(&result, &trans, &result);
 
-            // assign game object with the concat transform result
-            ships_multiplayer[portID]->transform = result;
+                    // assign game object with the concat transform result
+                    ships_multiplayer[obj.identifier]->transform = result;
+                }
 
-        }
+            }
+
 
         return;
     }

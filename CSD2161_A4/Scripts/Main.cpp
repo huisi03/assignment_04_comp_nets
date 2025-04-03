@@ -144,7 +144,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 					{
 						static int i = 0;
 						gameDataState.objects[i].transform.position = data.transform.position;
-						gameDataState.objects[i].type = ObjectType::OBJ_SHIP;
+						gameDataState.objects[i].type = 1;
 						gameDataState.objects[i].identifier = port;
 						++i;
 					}

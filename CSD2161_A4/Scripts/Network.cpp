@@ -488,7 +488,7 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 			UnpackGateStateData(receivedPacket);
 			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
 			{
-				if (gameDataState.objects[i].type == ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == clientPort)
+				if (gameDataState.objects[i].type == 1 && gameDataState.objects[i].identifier == clientPort)
 				{
 					player.transform = gameDataState.objects[i].transform;
 					for (int j = 0; j < static_cast<int>(gameDataState.playerCount); ++j)
@@ -501,7 +501,7 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 				}
 			}
 		}
-		std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
+		//std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
 
 }
@@ -529,7 +529,7 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 		{
 			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
 			{
-				if (gameDataState.objects[i].type == ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == portID)
+				if (gameDataState.objects[i].type == 1 && gameDataState.objects[i].identifier == portID)
 				{
 					gameDataState.objects[i].transform = playerData.transform;
 					for (int j = 0; j < static_cast<int>(gameDataState.playerCount); ++j)

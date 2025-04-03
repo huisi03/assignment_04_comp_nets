@@ -51,7 +51,7 @@ bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives)
 	return true;
 }
 
-bool AddNetworkObject(ObjectType type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale)
+bool AddNetworkObject(int type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale)
 {
 	std::lock_guard<std::mutex> lock(gameStateMutex);
 
