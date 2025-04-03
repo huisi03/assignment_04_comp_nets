@@ -637,6 +637,7 @@ void SendGameStateStart(SOCKET socket, sockaddr_in address, PlayerData& playerDa
 
 void ReceiveGameStateStart(SOCKET socket, PlayerData& player, NetworkPacket packet)
 {
+    (void)socket;
     //sockaddr_in address{};
     //NetworkPacket packet = ReceivePacket(socket, address);
 
