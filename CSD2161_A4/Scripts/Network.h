@@ -116,7 +116,7 @@ extern std::set<uint32_t> ackedPackets;                            // Tracks rec
 extern std::map<uint32_t, NetworkPacket> recvBuffer;               // Stores received packets
 extern std::map<uint32_t, uint64_t> timers;                        // Timeout tracking for packets waiting to be ACK-ed
 
-extern uint8_t clientCountGlobal;
+extern uint32_t clientCountGlobal;
 
 void AttachConsoleWindow();
 void FreeConsoleWindow();

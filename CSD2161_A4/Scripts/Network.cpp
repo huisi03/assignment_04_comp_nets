@@ -24,7 +24,7 @@ const std::string configFileRelativePath = "Resources/Configuration.txt";
 const std::string configFileServerIp = "serverIp";
 const std::string configFileServerPort = "serverUdpPort";
 
-uint8_t clientCountGlobal = 0;
+uint32_t clientCountGlobal = 0;
 
 void AttachConsoleWindow()
 {
@@ -735,7 +735,7 @@ void BroadcastClientCount(SOCKET socket, std::map<uint16_t, sockaddr_in>& client
         packet.destinationPortNumber = portID;			// Client's port
         packet.flags = 0;
         packet.packetID = GAME_SEND_CLIENT_COUNT;
-        std::memcpy(packet.data, (void*)&clientCountGlobal, sizeof(uint8_t));
+        std::memcpy(packet.data, (void*)&clientCountGlobal, sizeof(clientCountGlobal));
         SendPacket(socket, clientAddr, packet);
     }
 

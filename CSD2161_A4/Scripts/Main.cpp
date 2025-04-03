@@ -95,7 +95,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                 std::cout << "Disconnecting client at port number: " << std::to_string(packet.sourcePortNumber) << std::endl;
                 clientThreads.erase(packet.sourcePortNumber);
                 --clientCount;
-
+                clientCountGlobal = clientCount;
+                BroadcastClientCount(udpServerSocket, clients);
 
             }
             else if (packet.packetID == JOIN_REQUEST) {
