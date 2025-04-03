@@ -576,7 +576,7 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 			// Ensure the player's data exists
 			if (playersData.count(clientPortID))
 			{
-				HandlePlayerInput(clientPortID, gamePacket);
+				HandlePlayerInput(clientPortID, gamePacket, playersData);
 			}
 			else
 			{
@@ -590,34 +590,34 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 	}
 }
 
-void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet)
+void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData)
 {
 	// Note: Uncomment to test if the keys are working correctly
 	std::lock_guard<std::mutex> lock(playerDataMutex);
 	PlayerInput& playerInput = playerInputMap[clientPortID];
 	if (packet.packetID == InputKey::NONE)
 	{
-		//playersData[clientPortID].transform.velocity = { 0, 0 };
+		playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		//playersData[clientPortID].transform.position = { 10, 10 };
+		playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		//playersData[clientPortID].transform.position = { 20, 20 };
+		playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
-		//playersData[clientPortID].transform.position = { 30, 30 };
+		playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
-		//playersData[clientPortID].transform.position = { 40, 40 };
+		playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
 	else if (packet.packetID == InputKey::SPACE)
