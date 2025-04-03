@@ -675,6 +675,107 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 				}
 			}
 		}
+
+		for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
+		{
+			if (gameDataState.objects[i].type != (int)ObjectType::OBJ_ASTEROID)
+				continue;
+
+			NetworkObject& asteroid = gameDataState.objects[i];
+
+			for (int j = 0; j < MAX_NETWORK_OBJECTS; ++j)
+			{
+				if (i == j || gameDataState.objects[j].type == (int)ObjectType::OBJ_NULL)
+					continue;
+
+				NetworkObject& other = gameDataState.objects[j];
+
+				if (other.type == (int)ObjectType::OBJ_ASTEROID)
+					continue;
+
+				// Create bounding box for asteroid
+				AABB asteroidBox;
+				asteroidBox.min = AEVec2{ asteroid.transform.position.x - asteroid.transform.scale.x * 0.5f,
+										  asteroid.transform.position.y - asteroid.transform.scale.y * 0.5f };
+				asteroidBox.max = AEVec2{ asteroid.transform.position.x + asteroid.transform.scale.x * 0.5f,
+										  asteroid.transform.position.y + asteroid.transform.scale.y * 0.5f };
+
+				// Create bounding box for other object (ship or bullet)
+				AABB otherBox;
+				otherBox.min = AEVec2{ other.transform.position.x - other.transform.scale.x * 0.5f,
+									   other.transform.position.y - other.transform.scale.y * 0.5f };
+				otherBox.max = AEVec2{ other.transform.position.x + other.transform.scale.x * 0.5f,
+									   other.transform.position.y + other.transform.scale.y * 0.5f };
+
+				float tFirst = 0.0f;
+				if (CollisionIntersection_RectRect(asteroidBox, asteroid.transform.velocity, otherBox, other.transform.velocity, tFirst))
+				{
+					if (other.type == (int)ObjectType::OBJ_BULLET)
+					{
+						// Add score to the owner of this bullet
+						uint32_t bulletOwnerID = other.identifier;
+
+						for (int p = 0; p < static_cast<int>(gameDataState.playerCount); ++p)
+						{
+							if (gameDataState.playerData[p].identifier == bulletOwnerID)
+							{
+								gameDataState.playerData[p].score += 100;
+								break;
+							}
+						}
+
+						// Destroy asteroid and bullet
+						asteroid.type = (int)ObjectType::OBJ_NULL;
+						other.type = (int)ObjectType::OBJ_NULL;
+
+						// Optional: Spawn 1–2 new asteroids
+						//int count = (AERandFloat() > 0.1f) ? 1 : 2;
+						//for (int k = 0; k < count; ++k)
+						{
+							// Find an empty slot
+							for (int slot = 0; slot < MAX_NETWORK_OBJECTS; ++slot)
+							{
+								if (gameDataState.objects[slot].type == (int)ObjectType::OBJ_NULL)
+								{
+									AEVec2 pos = asteroid.transform.position;
+									AEVec2 scale = { AERandFloat() * 40 + 10, AERandFloat() * 40 + 10 };
+									AEVec2 vel = { AERandFloat() * 100 - 50, AERandFloat() * 100 - 50 };
+
+									gameDataState.objects[slot].type = (int)ObjectType::OBJ_ASTEROID;
+									gameDataState.objects[slot].identifier = (uint16_t)slot;
+									gameDataState.objects[slot].transform = NetworkTransform(pos, vel, 0.0f, scale);
+									break;
+								}
+							}
+						}
+					}
+					else if (other.type == (int)ObjectType::OBJ_SHIP)
+					{
+						// Reset ship position and velocity
+						PlayerData& ship = playerDataMap[other.identifier];
+						ship.transform.position = { 0, 0 };
+						ship.transform.velocity = { 0, 0 };
+						ship.transform.rotation = 0;
+
+						// Lose a life
+						ship.stats.lives = (ship.stats.lives > 0) ? ship.stats.lives - 1 : 0;
+						
+						// Update NetworkGameState
+						for (int p = 0; p < static_cast<int>(gameDataState.playerCount); ++p)
+						{
+							if (gameDataState.playerData[p].identifier == other.identifier)
+							{
+								gameDataState.playerData[p] = ship.stats;
+							}
+						}
+
+						// Destroy asteroid
+						//asteroid.type = (int)ObjectType::OBJ_NULL;
+					}
+				}
+			}
+		}
+
 		// limit server loop rate
 		//std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
