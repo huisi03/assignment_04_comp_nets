@@ -219,11 +219,25 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			NetworkPacket packet;
 			packet.packetID = InputKey::NONE;
 
-			if (GetAsyncKeyState(VK_UP) & 0x8000)      packet.packetID = InputKey::UP;
-			else if (GetAsyncKeyState(VK_DOWN) & 0x8000) packet.packetID = InputKey::DOWN;
-			else if (GetAsyncKeyState(VK_LEFT) & 0x8000) packet.packetID = InputKey::LEFT;
-			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
-			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
+			static bool spacePreviouslyPressed = false;
+
+			if (GetAsyncKeyState(VK_UP) & 0x8000)
+				packet.packetID = InputKey::UP;
+			else if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+				packet.packetID = InputKey::DOWN;
+			else if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+				packet.packetID = InputKey::LEFT;
+			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+				packet.packetID = InputKey::RIGHT;
+			else if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && !spacePreviouslyPressed)
+			{
+				packet.packetID = InputKey::SPACE;
+				spacePreviouslyPressed = true;
+			}
+			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000))
+			{
+				spacePreviouslyPressed = false;
+			}
 
 			packet.sourcePortNumber = GetClientPort();
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
@@ -436,18 +450,18 @@ void SpawnInitAsteroids(int starting_index, int count) {
         break;
     }
 
-    // randomise the velocity between (-min to -max and min to max)
-    int sign = (AERandFloat() > 0.5f) ? 1 : -1;
-    vel.x = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
+    for (int i = starting_index; i < starting_index + count; ++i) {
 
-    sign = (AERandFloat() > 0.5f) ? 1 : -1;
-    vel.y = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
+		// randomise the velocity between (-min to -max and min to max)
+		int sign = (AERandFloat() > 0.5f) ? 1 : -1;
+		vel.x = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
 
-    // randomise the scale between min and max
-    scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
-    scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
+		sign = (AERandFloat() > 0.5f) ? 1 : -1;
+		vel.y = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
 
-    for (int i = starting_index; i <= starting_index + count; ++i) {
+		// randomise the scale between min and max
+		scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
+		scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
 
         gameDataState.objects[i].transform.position = pos;
         gameDataState.objects[i].transform.scale = scale;
