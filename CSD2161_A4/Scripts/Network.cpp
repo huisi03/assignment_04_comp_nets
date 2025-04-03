@@ -601,6 +601,35 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 				input.spaceKey = false; // Prevent continuous firing
 			}
 
+			for (NetworkTransform& asteroid : asteroids)
+			{
+				//update position based on current velocity
+				asteroid.position += asteroid.velocity * deltaTime;
+
+				//around screen boundaries
+				float minX = AEGfxGetWinMinX();
+				float maxX = AEGfxGetWinMaxX();
+				float minY = AEGfxGetWinMinY();
+				float maxY = AEGfxGetWinMaxY();
+
+				asteroid.position.x = AEWrap(asteroid.position.x, minX, maxX);
+				asteroid.position.y = AEWrap(asteroid.position.y, minY, maxY);
+			}
+
+			// sychronize udated asteroid transforms to gameDataState
+			for (int i = 0; i < static_cast<int>(asteroids.size()); ++i)
+			{
+				for (int j = 0; j < static_cast<int>(gameDataState.objectCount); ++j)
+				{
+					if (gameDataState.objects[j].type == (int)ObjectType::OBJ_ASTEROID &&
+						gameDataState.objects[j].identifier == i) 
+					{
+						gameDataState.objects[j].transform = asteroids[i];
+					}
+				}
+			}
+
+
 			// Update game state (ship transform & stats)
 			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
 			{

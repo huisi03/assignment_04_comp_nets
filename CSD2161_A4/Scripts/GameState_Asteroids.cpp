@@ -357,25 +357,6 @@ void GameStateAsteroidsLoad(void)
 void GameStateAsteroidsInit(void)
 {
 
-    // Spawn initial number of ships, asteroids and bullets
-
-    //std::map<uint16_t, PlayerData> playerDataMap;									// Data on server side for all players data
-    //std::vector<NetworkTransform> asteroids;										// Vector of asteroids
-    //std::unordered_map<uint16_t, std::vector<NetworkTransform>> playerBulletMap;	// A map containing the player portID against the bullets to track which bullets belong to which player
-
-    /*
-
-    struct PlayerData
-    {
-        PlayerData() = default;
-        PlayerData(AEVec2 pos, AEVec2 scale)
-            : transform{ pos, {0, 0}, 0.0f, scale }, stats{} {}
-        NetworkTransform transform;
-        NetworkPlayerData stats;
-    };
-
-    */
-
     if (networkType == NetworkType::CLIENT) {
 
         // spawning the ship
@@ -1311,7 +1292,6 @@ void gameObjInstCreateRandomAsteroid()
     scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
     scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
 
-    // create the asteroid
     gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
 }
 
