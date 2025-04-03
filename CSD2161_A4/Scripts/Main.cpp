@@ -202,16 +202,16 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::thread renderThread(Render, instanceH, show);
 		renderThread.detach(); // Detach it to run in background
 
-		HWND clientWindow = GetConsoleWindow();
+		//HWND clientWindow = GetConsoleWindow();
 
 		while (true)
 		{
-			// For multiple client on the same computer
-			if (GetForegroundWindow() != clientWindow)
-			{
-				Sleep(10); // Small delay to avoid 100% CPU usage
-				continue;
-			}
+			//// For multiple client on the same computer
+			//if (GetForegroundWindow() != clientWindow)
+			//{
+			//	Sleep(10); // Small delay to avoid 100% CPU usage
+			//	continue;
+			//}
 
 			// Handle input
 			NetworkPacket packet;
