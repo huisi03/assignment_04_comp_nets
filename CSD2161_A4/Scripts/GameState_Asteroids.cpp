@@ -967,11 +967,8 @@ void GameStateAsteroidsDraw(void)
         sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
         AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
         RenderText(pos, 36, strBuffer);
-
-        sprintf_s(strBuffer, "High Score: %d", High_Score);
-        AEVec2Set(&pos, SCREEN_SIZE_X - 1300, -SCREEN_SIZE_Y + 75);
-        RenderText(pos, 36, strBuffer);
     }
+
     else {
 
         // draw all object instances in the list
@@ -1049,17 +1046,8 @@ void GameStateAsteroidsDraw(void)
             sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
             AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
             RenderText(pos, 36, strBuffer);
-
-            sprintf_s(strBuffer, "High Score: %d", High_Score);
-            AEVec2Set(&pos, SCREEN_SIZE_X - 1300, -SCREEN_SIZE_Y + 75);
-            RenderText(pos, 36, strBuffer);
         }
     }
-
-
-
-
-
 }
 
 /******************************************************************************/
