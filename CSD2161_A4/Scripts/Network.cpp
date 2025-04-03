@@ -843,7 +843,7 @@ void Render(NetworkGameState& gameState)
 
             AESysFrameStart(); // start of frame
 
-            //GameStateUpdate(); // update current game state
+            GameStateUpdate(); // update current game state
 
             GameStateDraw(); // draw current game state
 
