@@ -11,3 +11,5 @@ std::unordered_map<uint16_t, std::vector<NetworkTransform>> playerBulletMap;	// 
 PlayerData clientData;															// Data on client side for player's own data
 NetworkGameState gameDataState;													// Data on both side that will contain all game object
 
+std::map<uint16_t, bool> isPlayerConnected;										// portID -> true/false
+std::map<uint16_t, uint64_t> lastHeardTime;										// portID -> last packet time (ms)

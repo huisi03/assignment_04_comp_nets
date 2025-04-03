@@ -15,6 +15,7 @@ std::mutex playerDataMutex;
 uint32_t nextSeqNum = SEQ_NUM_MIN;
 uint32_t sendBase = SEQ_NUM_MIN;
 uint32_t recvBase = SEQ_NUM_MIN;
+
 std::map<uint32_t, NetworkPacket> sendBuffer{};                 // Packets awaiting ACK
 std::map<uint32_t, NetworkPacket> recvBuffer{};                 // Stores received packets
 std::set<uint32_t> ackedPackets;                                // Tracks received ACKs
@@ -25,6 +26,7 @@ const std::string configFileServerIp = "serverIp";
 const std::string configFileServerPort = "serverUdpPort";
 
 uint32_t clientCountGlobal = 0;
+uint32_t DISCONNECT_THRESHOLD_MS = TIMEOUT_MS_MAX;
 
 void AttachConsoleWindow()
 {
@@ -142,6 +144,9 @@ int StartServer()
         WSACleanup();
         return ERROR_CODE;
     }
+
+    isPlayerConnected.clear();
+    lastHeardTime.clear();
 
     // Print server IP address and serverPort number
     char serverIPAddress[DEFAULT_BUFLEN];
@@ -567,6 +572,13 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 			if (gamePacket.packetID == UINT16_MAX) // Check for invalid packet
 				continue;
 
+            lastHeardTime[clientPortID] = GetTimeNow();
+            if (!isPlayerConnected[clientPortID])
+            {
+                isPlayerConnected[clientPortID] = true;
+                std::cout << "[Server] Player " << clientPortID << " reconnected (HandleClientInput)\n";
+            }
+
             SendAck(serverUDPSocket, senderAddress, gamePacket);
 
 			// Ensure this is from the correct client
@@ -779,7 +791,23 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 			std::cout << "Client: " << portID << " position: " << playerData.transform.position.x << " " << playerData.transform.position.y << std::endl;
 		}
 		
+        // --------------- Timeout Check ---------------
+        uint64_t now = GetTimeNow();
 
+        for (auto& [portID, connected] : isPlayerConnected)
+        {
+            if (!connected) continue; // current client at portID is already disconnected
+
+            // if it's been more than DISCONNECT_THRESHOLD_MS since server has heard from them
+            if (now - lastHeardTime[portID] > DISCONNECT_THRESHOLD_MS)
+            {
+                connected = false; // mark them as disconnected
+                std::cout << "[Server] Player " << portID << " timed out -> disconnected\n";
+            }
+        }
+        // --------------- End of Timeout Check ------------
+
+        Sleep(16); // small throttle to avoid CPU hog
 	}
 
 }

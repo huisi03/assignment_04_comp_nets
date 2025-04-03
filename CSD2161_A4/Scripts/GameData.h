@@ -35,6 +35,8 @@ extern std::unordered_map<uint16_t, std::vector<NetworkTransform>> playerBulletM
 extern std::mutex gameDataMutex;
 extern PlayerData clientData;
 extern NetworkGameState gameDataState;
+extern std::map<uint16_t, bool> isPlayerConnected;
+extern std::map<uint16_t, uint64_t> lastHeardTime;
 
 
 

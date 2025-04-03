@@ -84,6 +84,22 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
         {
             NetworkPacket packet = ReceivePacket(udpServerSocket, address);
 
+            // need to check that the packet is valid then record the time
+            if (packet.packetID != UINT16_MAX)
+            {
+                uint16_t port = packet.sourcePortNumber;
+                lastHeardTime[port] = GetTimeNow();
+
+                // check the map to ensure client is connected BEFORE!
+                // if they not connected before, mark them connected
+                if (isPlayerConnected.find(port) == isPlayerConnected.end() ||
+                    !isPlayerConnected[port])
+                {
+                    isPlayerConnected[port] = true;
+                    std::cout << "[Server] Player " << port << " is now connected.\n";
+                }
+            }
+
             if (packet.packetID == REQ_CONNECT) {
 
                 // Sends acknowledgment
@@ -101,13 +117,20 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
             }
             else if (packet.packetID == JOIN_REQUEST) {
 
-                if (clientCount == clientsRequired && clients.count(packet.sourcePortNumber) == false)
+                uint16_t portID = packet.sourcePortNumber;
+
+                if (clientCount == clientsRequired && clients.count(portID) == false)
                 {
                     // ignore request, lobby is full
+                    std::cout << " [Server] Ignoring join, server is full\n";
                     continue;
                 }
 
                 HandleJoinRequest(udpServerSocket, address, packet);
+
+                isPlayerConnected[portID] = true;
+                lastHeardTime[portID] = GetTimeNow();
+                std::cout << " [Server] Client [" << portID << "] has joined.\n";
 
                 // Check if the client is in the map already
                 if (clients.count(packet.sourcePortNumber) == false)

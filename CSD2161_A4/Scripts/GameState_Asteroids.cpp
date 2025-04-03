@@ -158,7 +158,7 @@ static unsigned long		sScore;										// Current score
 
 // font reference for text rendering
 const char*					pFontURL = "Resources/Arial Italic.ttf";	// font url
-s8							pFont;										// current font selected
+// s8							pFont;										// current font selected
 
 //ensures the leaderboard is updated only once when game over triggers.
 //after submission, the flag is set to true — so all future frames skip the submission.
