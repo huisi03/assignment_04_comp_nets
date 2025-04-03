@@ -29,6 +29,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <vector>
 
 
 /******************************************************************************/
@@ -165,6 +166,11 @@ const char*					pFontURL = "Resources/Arial Italic.ttf";	// font url
 //after submission, the flag is set to true — so all future frames skip the submission.
 //prevent from dulpicate saves
 static bool scoreAlreadySubmitted = false;
+
+
+std::map<uint16_t, GameObjInst*> ships_multiplayer{};
+std::vector<GameObjInst*> asteroids_multiplier{};
+std::vector<GameObjInst*> bullets_multiplier{};
 // ---------------------------------------------------------------------------
 
 // functions to create/destroy a game object instance
@@ -347,50 +353,86 @@ void GameStateAsteroidsLoad(void)
 /******************************************************************************/
 void GameStateAsteroidsInit(void)
 {
-	// create the main ship
-	AEVec2 scale;
-	AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
-	spShip = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
-	AE_ASSERT(spShip);
+    
+    // Spawn initial number of ships, asteroids and bullets
+
+    //std::map<uint16_t, PlayerData> playerDataMap;									// Data on server side for all players data
+    //std::vector<NetworkTransform> asteroids;										// Vector of asteroids
+    //std::unordered_map<uint16_t, std::vector<NetworkTransform>> playerBulletMap;	// A map containing the player portID against the bullets to track which bullets belong to which player
+
+    /*
+    
+    struct PlayerData
+    {
+	    PlayerData() = default;
+	    PlayerData(AEVec2 pos, AEVec2 scale)
+		    : transform{ pos, {0, 0}, 0.0f, scale }, stats{} {}
+	    NetworkTransform transform;
+	    NetworkPlayerData stats;
+    };
+    
+    */
+
+    if (gameType == GameType::MULTIPLAYER) {
+
+        // spawning the ship
+        for (auto const& [portID, player_data] : playerDataMap) {
+            AEVec2 scale;
+            AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
+            ships_multiplayer[portID] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+            AE_ASSERT(spShip);
+        }
+
+    }
+
+    if (gameType == GameType::SINGLE_PLAYER) {
+
+        // create the main ship
+        AEVec2 scale;
+        AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
+        spShip = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+        AE_ASSERT(spShip);
+
+        // create the initial 4 asteroids instances using the "gameObjInstCreate" function
+        AEVec2 pos, vel;
+
+        //Asteroid 1
+        pos.x = 90.0f;		pos.y = -220.0f;
+        vel.x = -60.0f;		vel.y = -30.0f;
+        AEVec2Set(&scale, ASTEROID_MIN_SCALE_X, ASTEROID_MAX_SCALE_Y);
+        gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
+
+        //Asteroid 2
+        pos.x = -260.0f;	pos.y = -250.0f;
+        vel.x = 39.0f;		vel.y = -130.0f;
+        AEVec2Set(&scale, ASTEROID_MAX_SCALE_X, ASTEROID_MIN_SCALE_Y);
+        gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
+
+        //Asteroid 3
+        pos.x = -190.0f;	pos.y = 200.0f;
+        vel.x = -50.0f;		vel.y = 30.0f;
+        AEVec2Set(&scale, ASTEROID_MIN_SCALE_X, ASTEROID_MAX_SCALE_Y);
+        gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
+
+        //Asteroid 4
+        pos.x = 210.0f;		pos.y = 100.0f;
+        vel.x = 40.0f;		vel.y = 70.0f;
+        AEVec2Set(&scale, ASTEROID_MAX_SCALE_X, ASTEROID_MIN_SCALE_Y);
+        gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
+
+        // create the static wall
+        AEVec2Set(&scale, WALL_SCALE_X, WALL_SCALE_Y);
+        AEVec2 position;
+        AEVec2Set(&position, 300.0f, 150.0f);
+        spWall = gameObjInstCreate(TYPE_WALL, &scale, &position, nullptr, 0.0f);
+        AE_ASSERT(spWall);
+
+        // reset the score and the number of ships
+        sScore = 0;
+        sShipLives = SHIP_INITIAL_NUM;
+        High_Score = LoadHighScore();  // Load the high score when the game starts 
+    }
 	
-	// create the initial 4 asteroids instances using the "gameObjInstCreate" function
-	AEVec2 pos, vel;
-
-	//Asteroid 1
-	pos.x = 90.0f;		pos.y = -220.0f;
-	vel.x = -60.0f;		vel.y = -30.0f;
-	AEVec2Set(&scale, ASTEROID_MIN_SCALE_X, ASTEROID_MAX_SCALE_Y);
-	gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
-
-	//Asteroid 2
-	pos.x = -260.0f;	pos.y = -250.0f;
-	vel.x = 39.0f;		vel.y = -130.0f;
-	AEVec2Set(&scale, ASTEROID_MAX_SCALE_X, ASTEROID_MIN_SCALE_Y);
-	gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
-
-	//Asteroid 3
-	pos.x = -190.0f;	pos.y = 200.0f;
-	vel.x = -50.0f;		vel.y = 30.0f;
-	AEVec2Set(&scale, ASTEROID_MIN_SCALE_X, ASTEROID_MAX_SCALE_Y);
-	gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
-
-	//Asteroid 4
-	pos.x = 210.0f;		pos.y = 100.0f;
-	vel.x = 40.0f;		vel.y = 70.0f;
-	AEVec2Set(&scale, ASTEROID_MAX_SCALE_X, ASTEROID_MIN_SCALE_Y);
-	gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
-
-	// create the static wall
-	AEVec2Set(&scale, WALL_SCALE_X, WALL_SCALE_Y);
-	AEVec2 position;
-	AEVec2Set(&position, 300.0f, 150.0f);
-	spWall = gameObjInstCreate(TYPE_WALL, &scale, &position, nullptr, 0.0f);
-	AE_ASSERT(spWall);
-
-	// reset the score and the number of ships
-	sScore      = 0;
-	sShipLives  = SHIP_INITIAL_NUM;
-	High_Score = LoadHighScore();  // Load the high score when the game starts 
 
 }
 
@@ -403,8 +445,41 @@ void GameStateAsteroidsUpdate(void)
 {
 
     if (gameType == GameType::MULTIPLAYER) {
+        
+        // spawning the ship
+        for (auto const& [portID, player_data] : playerDataMap) {
+
+            ships_multiplayer[portID]->posPrev = ships_multiplayer[portID]->posCurr;
+            ships_multiplayer[portID]->posCurr = player_data.transform.position;
+
+            ships_multiplayer[portID]->velCurr = player_data.transform.velocity;
+            ships_multiplayer[portID]->dirCurr = player_data.transform.rotation;
+
+            ships_multiplayer[portID]->scale = player_data.transform.scale;
+
+            AEMtx33		 trans, rot, scale;
+
+            // Compute the scaling matrix
+            AEMtx33Scale(&scale, ships_multiplayer[portID]->scale.x, ships_multiplayer[portID]->scale.y);
+
+            // Compute the rotation matrix 
+            AEMtx33Rot(&rot, ships_multiplayer[portID]->dirCurr);
+
+            // Compute the translation matrix
+            AEMtx33Trans(&trans, ships_multiplayer[portID]->posCurr.x, ships_multiplayer[portID]->posCurr.y);
+
+            // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
+            AEMtx33 result;
+            AEMtx33Concat(&result, &rot, &scale);
+            AEMtx33Concat(&result, &trans, &result);
+
+            // assign game object with the concat transform result
+            ships_multiplayer[portID]->transform = result;
+
+        }
+
         return;
-    }
+    } 
 
     // stop updating logic if player is dead
     if (sShipLives < 0)
@@ -749,89 +824,113 @@ void GameStateAsteroidsUpdate(void)
 /******************************************************************************/
 void GameStateAsteroidsDraw(void)
 {
-	char strBuffer[1024];
+    char strBuffer[1024];
+
+    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+    AEGfxTextureSet(NULL, 0, 0);
+
+
+    // Set blend mode to AE_GFX_BM_BLEND
+    // This will allow transparency.
+    AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+    AEGfxSetTransparency(1.0f);
+
+
+    if (gameType == GameType::MULTIPLAYER) {
+
+        // spawning the ship
+        for (auto const &[portID, pInst] : ships_multiplayer) {
+
+            // skip non-active object
+            if ((pInst->flag & FLAG_ACTIVE) == 0)
+                continue;
+
+            // Set the current object instance's transform matrix using "AEGfxSetTransform"
+            AEGfxSetTransform(pInst->transform.m);
+
+            // Draw the shape used by the current object instance using "AEGfxMeshDraw"
+            AEGfxMeshDraw(pInst->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
+        }
+
+
+    } else {
+
+        // draw all object instances in the list
+        for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+        {
+            GameObjInst* pInst = sGameObjInstList + i;
+
+            // skip non-active object
+            if ((pInst->flag & FLAG_ACTIVE) == 0)
+                continue;
+
+            // Set the current object instance's transform matrix using "AEGfxSetTransform"
+            AEGfxSetTransform(pInst->transform.m);
+
+            // Draw the shape used by the current object instance using "AEGfxMeshDraw"
+            AEGfxMeshDraw(pInst->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
+        }
+
+        //You can replace this condition/variable by your own data.
+        //The idea is to display any of these variables/strings whenever a change in their value happens
+        static bool onValueChange = true;
+
+        // cache score and lives
+        static unsigned long scoreCache;
+        static long shipLivesCache;
+
+        // check and update if value for score or lives changed
+        onValueChange = (scoreCache != sScore || shipLivesCache != sShipLives);
+
+        // Renders text in game
+        AEVec2 pos;
+
+        // Check if we have a new high score
+        if (sScore > High_Score)
+        {
+            High_Score = sScore;
+            SaveHighScore(High_Score); // Save the new high score to the text file
+            printf("New High Score: %lu\n", High_Score);  // Print it in console 
+        }
+
+
+
+        if (sShipLives < 0)
+        {
+
+
+            sprintf_s(strBuffer, "Game Over");
+            AEVec2Set(&pos, 0, 50);
+            RenderText(pos, 36, strBuffer);
+
+            sprintf_s(strBuffer, "Score: %d", sScore);
+            AEVec2Set(&pos, 0, -50);
+            RenderText(pos, 36, strBuffer);
+
+            sprintf_s(strBuffer, "Press R to try again!");
+            AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
+            RenderText(pos, 36, strBuffer);
+        }
+
+        else
+        {
+            sprintf_s(strBuffer, "Score: %d", sScore);
+            AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
+            RenderText(pos, 36, strBuffer);
+
+            sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
+            AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
+            RenderText(pos, 36, strBuffer);
+
+            sprintf_s(strBuffer, "High Score: %d", High_Score);
+            AEVec2Set(&pos, SCREEN_SIZE_X - 1300, -SCREEN_SIZE_Y + 75);
+            RenderText(pos, 36, strBuffer);
+        }
+    }
+
 	
-	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-	AEGfxTextureSet(NULL, 0, 0);
-
-
-	// Set blend mode to AE_GFX_BM_BLEND
-	// This will allow transparency.
-	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
-	AEGfxSetTransparency(1.0f);
-
-
-	// draw all object instances in the list
-	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
-	{
-		GameObjInst * pInst = sGameObjInstList + i;
-
-		// skip non-active object
-		if ((pInst->flag & FLAG_ACTIVE) == 0)
-			continue;
-		
-		// Set the current object instance's transform matrix using "AEGfxSetTransform"
-		AEGfxSetTransform(pInst->transform.m);
-
-		// Draw the shape used by the current object instance using "AEGfxMeshDraw"
-		AEGfxMeshDraw(pInst->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
-	}
-
-	//You can replace this condition/variable by your own data.
-	//The idea is to display any of these variables/strings whenever a change in their value happens
-	static bool onValueChange = true;
-
-	// cache score and lives
-	static unsigned long scoreCache;
-	static long shipLivesCache;
-
-	// check and update if value for score or lives changed
-	onValueChange = (scoreCache != sScore || shipLivesCache != sShipLives);
-	
-	// Renders text in game
-	AEVec2 pos;
-
-	// Check if we have a new high score
-	if (sScore > High_Score)
-	{
-		High_Score = sScore;
-		SaveHighScore(High_Score); // Save the new high score to the text file
-		printf("New High Score: %lu\n", High_Score);  // Print it in console 
-	}
 
 	
-
-	if (sShipLives < 0)
-	{
-		
-
-		sprintf_s(strBuffer, "Game Over");
-		AEVec2Set(&pos, 0, 50);
-		RenderText(pos, 36, strBuffer);
-
-		sprintf_s(strBuffer, "Score: %d", sScore);
-		AEVec2Set(&pos, 0, -50);
-		RenderText(pos, 36, strBuffer);
-
-		sprintf_s(strBuffer, "Press R to try again!");
-		AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
-		RenderText(pos, 36, strBuffer);
-	}
-
-	else
-	{
-		sprintf_s(strBuffer, "Score: %d", sScore);
-		AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
-		RenderText(pos, 36, strBuffer);
-
-		sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
-		AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
-		RenderText(pos, 36, strBuffer);
-
-		sprintf_s(strBuffer, "High Score: %d", High_Score);
-		AEVec2Set(&pos, SCREEN_SIZE_X - 1300, -SCREEN_SIZE_Y + 75);
-		RenderText(pos, 36, strBuffer);
-	}
 
 }
 

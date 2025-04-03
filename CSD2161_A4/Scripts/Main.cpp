@@ -96,6 +96,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                 clientThreads.erase(packet.sourcePortNumber);
                 --clientCount;
                 clientCountGlobal = clientCount;
+
                 BroadcastClientCount(udpServerSocket, clients);
 
             }
