@@ -76,6 +76,10 @@ int StartServer()
 		}
 	}
 
+	if (portString.empty()) {
+		return ERROR_CODE;
+	}
+
 	// Setup WSA data
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(WINSOCK_VERSION, WINSOCK_SUBVERSION), &wsaData) != 0)
@@ -91,8 +95,16 @@ int StartServer()
 	udpHints.ai_socktype = SOCK_DGRAM;   // Datagram (unreliable)
 	udpHints.ai_protocol = IPPROTO_UDP;  // UDP
 
+	char hostname[256];
+	if (gethostname(hostname, sizeof(hostname)) == SOCKET_ERROR)
+	{
+		std::cerr << "gethostname() failed. Error: " << WSAGetLastError() << std::endl;
+		WSACleanup();
+		return ERROR_CODE;
+	}
+
 	addrinfo* udpInfo = nullptr;
-	if (getaddrinfo(nullptr, portString.c_str(), &udpHints, &udpInfo) != 0)
+	if (getaddrinfo(hostname, portString.c_str(), &udpHints, &udpInfo) != 0)
 	{
 		std::cerr << "getaddrinfo() failed. Error: " << WSAGetLastError() << std::endl;
 		WSACleanup();
@@ -124,12 +136,13 @@ int StartServer()
 		return ERROR_CODE;
 	}
 
+
 	// Print server IP address and serverPort number
 	char serverIPAddress[DEFAULT_BUFLEN];
 	struct sockaddr_in* address = reinterpret_cast<struct sockaddr_in*> (udpInfo->ai_addr);
 	inet_ntop(AF_INET, &(address->sin_addr), serverIPAddress, INET_ADDRSTRLEN);
 	getnameinfo(udpInfo->ai_addr, static_cast <socklen_t>(udpInfo->ai_addrlen), serverIPAddress, sizeof(serverIPAddress), nullptr, 0, NI_NUMERICHOST);
-	
+
 	std::cout << std::endl;
 	std::cout << "Server has been established" << std::endl;
 	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
@@ -387,27 +400,27 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 	PlayerInput& playerInput = playerInputMap[clientPortID];
 	if (packet.packetID == InputKey::NONE)
 	{
-		//playersData[clientPortID].transform.velocity = { 0, 0 };
+		playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		//playersData[clientPortID].transform.position = { 10, 10 };
+		playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		//playersData[clientPortID].transform.position = { 20, 20 };
+		playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
-		//playersData[clientPortID].transform.position = { 30, 30 };
+		playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
-		//playersData[clientPortID].transform.position = { 40, 40 };
+		playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
 	else if (packet.packetID == InputKey::SPACE)
