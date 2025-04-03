@@ -30,6 +30,7 @@ int			pFont; // this is for the text
 const int	Fontsize = 25; // size of the text
 
 void Render(HINSTANCE instanceH, int show);
+void SpawnInitAsteroids(int starting_index, int count);
 /******************************************************************************/
 /*!
 \brief 
@@ -68,7 +69,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::map<uint16_t, sockaddr_in> clients;
 		std::unordered_map<uint16_t, std::thread> clientThreads;
 
-		int clientsRequired = 1;
+		int clientsRequired = 2;
 		int clientCount = 0;
 
 		bool gameStarted = false; // Add a flag
@@ -149,6 +150,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 						++i;
 					}
 
+                    SpawnInitAsteroids(clientCount, 10);
 				}
 			}
 			else
@@ -217,11 +219,25 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			NetworkPacket packet;
 			packet.packetID = InputKey::NONE;
 
-			if (GetAsyncKeyState(VK_UP) & 0x8000)      packet.packetID = InputKey::UP;
-			else if (GetAsyncKeyState(VK_DOWN) & 0x8000) packet.packetID = InputKey::DOWN;
-			else if (GetAsyncKeyState(VK_LEFT) & 0x8000) packet.packetID = InputKey::LEFT;
-			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
-			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
+			static bool spacePreviouslyPressed = false;
+
+			if (GetAsyncKeyState(VK_UP) & 0x8000)
+				packet.packetID = InputKey::UP;
+			else if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+				packet.packetID = InputKey::DOWN;
+			else if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+				packet.packetID = InputKey::LEFT;
+			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+				packet.packetID = InputKey::RIGHT;
+			else if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && !spacePreviouslyPressed)
+			{
+				packet.packetID = InputKey::SPACE;
+				spacePreviouslyPressed = true;
+			}
+			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000))
+			{
+				spacePreviouslyPressed = false;
+			}
 
 			packet.sourcePortNumber = GetClientPort();
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
@@ -391,4 +407,72 @@ void Render(HINSTANCE instanceH, int show)
 
 	// free the system
 	AESysExit();
+}
+
+void SpawnInitAsteroids(int starting_index, int count) {
+
+    const float			ASTEROID_MIN_VEL = 30.0f;		// asteroid minimum velocity
+
+    const float			ASTEROID_MAX_VEL = 100.0f;		// asteroid maximum velocity
+
+    const float			SCREEN_SIZE_X = 800.0f;		// Screen size horizontal for randomiser
+
+    const float			SCREEN_SIZE_Y = 600.0f;		// Screen size vertical for randomiser
+
+    const float			ASTEROID_MIN_SCALE_X = 10.0f;		// asteroid minimum scale x
+    const float			ASTEROID_MAX_SCALE_X = 60.0f;		// asteroid maximum scale x
+    const float			ASTEROID_MIN_SCALE_Y = 10.0f;		// asteroid minimum scale y
+    const float			ASTEROID_MAX_SCALE_Y = 60.0f;		// asteroid maximum scale y
+
+    int edge = (int)(AERandFloat() * 4);
+
+    // initialize the position
+    AEVec2 pos, vel, scale;
+
+    // set random position based on the chosen edge
+    switch (edge)
+    {
+    default:
+    case 0:  // Top edge
+        pos.x = (AERandFloat() - 0.5f) * SCREEN_SIZE_X;
+        pos.y = SCREEN_SIZE_Y * 0.5f;
+        break;
+
+    case 1:  // Right edge
+        pos.x = SCREEN_SIZE_X * 0.5f;
+        pos.y = (AERandFloat() - 0.5f) * SCREEN_SIZE_Y;
+        break;
+
+    case 2:  // Bottom edge
+        pos.x = (AERandFloat() - 0.5f) * SCREEN_SIZE_X;
+        pos.y = -SCREEN_SIZE_Y * 0.5f;
+        break;
+
+    case 3:  // Left edge
+        pos.x = -SCREEN_SIZE_X * 0.5f;
+        pos.y = (AERandFloat() - 0.5f) * SCREEN_SIZE_Y;
+        break;
+    }
+
+    for (int i = starting_index; i < starting_index + count; ++i) {
+
+		// randomise the velocity between (-min to -max and min to max)
+		int sign = (AERandFloat() > 0.5f) ? 1 : -1;
+		vel.x = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
+
+		sign = (AERandFloat() > 0.5f) ? 1 : -1;
+		vel.y = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
+
+		// randomise the scale between min and max
+		scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
+		scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
+
+        gameDataState.objects[i].transform.position = pos;
+        gameDataState.objects[i].transform.scale = scale;
+        gameDataState.objects[i].transform.velocity = vel;
+        gameDataState.objects[i].type = (int)ObjectType::OBJ_ASTEROID;
+  
+    }
+
+    gameDataState.objectCount += count;
 }

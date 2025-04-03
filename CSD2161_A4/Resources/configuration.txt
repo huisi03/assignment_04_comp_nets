@@ -1,3 +1,2 @@
-
-serverIp 172.28.208.1
+serverIp 10.132.60.206
 serverUdpPort 9000

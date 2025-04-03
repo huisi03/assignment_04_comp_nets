@@ -249,6 +249,9 @@ void SaveHighScore(unsigned long highscore)
 /******************************************************************************/
 void GameStateAsteroidsLoad(void)
 {
+    // Collate scores onto the leaderboard
+    LoadLeaderboard();
+
     // loads font
     pFont = AEGfxCreateFont(pFontURL, 72);
 
@@ -353,25 +356,6 @@ void GameStateAsteroidsLoad(void)
 /******************************************************************************/
 void GameStateAsteroidsInit(void)
 {
-
-    // Spawn initial number of ships, asteroids and bullets
-
-    //std::map<uint16_t, PlayerData> playerDataMap;									// Data on server side for all players data
-    //std::vector<NetworkTransform> asteroids;										// Vector of asteroids
-    //std::unordered_map<uint16_t, std::vector<NetworkTransform>> playerBulletMap;	// A map containing the player portID against the bullets to track which bullets belong to which player
-
-    /*
-
-    struct PlayerData
-    {
-        PlayerData() = default;
-        PlayerData(AEVec2 pos, AEVec2 scale)
-            : transform{ pos, {0, 0}, 0.0f, scale }, stats{} {}
-        NetworkTransform transform;
-        NetworkPlayerData stats;
-    };
-
-    */
 
     if (networkType == NetworkType::CLIENT) {
 
@@ -974,7 +958,17 @@ void GameStateAsteroidsDraw(void)
             AEGfxMeshDraw(obj->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
         }
 
+        AEVec2 pos;
+
+        sprintf_s(strBuffer, "Score: %d", sScore);
+        AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
+        RenderText(pos, 36, strBuffer);
+
+        sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
+        AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
+        RenderText(pos, 36, strBuffer);
     }
+
     else {
 
         // draw all object instances in the list
@@ -1015,23 +1009,32 @@ void GameStateAsteroidsDraw(void)
             printf("New High Score: %lu\n", High_Score);  // Print it in console 
         }
 
-
-
         if (sShipLives < 0)
         {
+            // Get current time
+            char timeBuffer[20];
+            std::time_t currentTime = std::time(nullptr);
+            std::tm localTime;
+            localtime_s(&localTime, &currentTime);
+            std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
 
+            for (auto [id, score, lives] : gameDataState.playerData)
+            {
+                AddScoreToLeaderboard(id, "", score, timeBuffer);
+            }
+            SaveLeaderboard();
 
-            sprintf_s(strBuffer, "Game Over");
-            AEVec2Set(&pos, 0, 50);
-            RenderText(pos, 36, strBuffer);
+            ReceiveLeaderboard(udpClientSocket);
 
-            sprintf_s(strBuffer, "Score: %d", sScore);
-            AEVec2Set(&pos, 0, -50);
-            RenderText(pos, 36, strBuffer);
-
-            sprintf_s(strBuffer, "Press R to try again!");
-            AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
-            RenderText(pos, 36, strBuffer);
+            std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
+            int yOffset = -150; // starting position for leaderboard display
+            for (const auto& scoreEntry : topScores)
+            {
+                sprintf_s(strBuffer, "%s", scoreEntry.c_str());
+                AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
+                RenderText(pos, 24, strBuffer);
+                yOffset -= 60; // space between entries
+            }
         }
 
         else
@@ -1043,17 +1046,8 @@ void GameStateAsteroidsDraw(void)
             sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
             AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
             RenderText(pos, 36, strBuffer);
-
-            sprintf_s(strBuffer, "High Score: %d", High_Score);
-            AEVec2Set(&pos, SCREEN_SIZE_X - 1300, -SCREEN_SIZE_Y + 75);
-            RenderText(pos, 36, strBuffer);
         }
     }
-
-
-
-
-
 }
 
 /******************************************************************************/
@@ -1092,7 +1086,7 @@ void GameStateAsteroidsUnload(void)
     }
 
     // destroy font
-    AEGfxDestroyFont(pFont);
+    AEGfxDestroyFont((s8)pFont);
 }
 
 /******************************************************************************/
@@ -1286,7 +1280,6 @@ void gameObjInstCreateRandomAsteroid()
     scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
     scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
 
-    // create the asteroid
     gameObjInstCreate(TYPE_ASTEROID, &scale, &pos, &vel, 0.0f);
 }
 
@@ -1310,12 +1303,12 @@ void RenderText(AEVec2 position, f32 fSize, char const* text)
 {
     f32 _width, _height;
 
-    AEGfxGetPrintSize(pFont, text, fSize / 72, &_width, &_height);
+    AEGfxGetPrintSize((s8)pFont, text, fSize / 72, &_width, &_height);
 
     _width = position.x / SCREEN_SIZE_X - _width / 2.f;
     _height = position.y / SCREEN_SIZE_Y - _height / 2.f;
 
-    AEGfxPrint(pFont, text, _width, _height, static_cast<f32>(fSize) / 72, 1, 1, 1, 1);
+    AEGfxPrint((s8)pFont, text, _width, _height, static_cast<f32>(fSize) / 72, 1, 1, 1, 1);
 }
 
 /******************************************************************************/

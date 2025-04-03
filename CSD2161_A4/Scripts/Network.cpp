@@ -1,4 +1,5 @@
 #include "Network.h"
+#include "Collision.h"
 
 
 // Define
@@ -396,6 +397,7 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 
 void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<uint16_t, PlayerData>& playersData)
 {
+	UNREFERENCED_PARAMETER(playersData);
 	// Note: Uncomment to test if the keys are working correctly
 	std::lock_guard<std::mutex> lock(playerDataMutex);
 	PlayerInput& playerInput = playerInputMap[clientPortID];
@@ -487,7 +489,7 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 		if (receivedPacket.packetID == GAME_STATE_UPDATE)
 		{
 			UnpackGateStateData(receivedPacket);
-			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
 			{
 				if (gameDataState.objects[i].type == 1 && gameDataState.objects[i].identifier == clientPort)
 				{
@@ -507,9 +509,55 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 
 }
 
+void PackLeaderboardData(NetworkPacket& packet)
+{
+	std::lock_guard<std::mutex> lock1(packetMutex);
+	std::lock_guard<std::mutex> lock2(leaderboardMutex);
+	memset(packet.data, 0, DEFAULT_BUFLEN);                            // Ensure buffer is cleared
+	memcpy(packet.data, &leaderboard, sizeof(NetworkLeaderboard));    // Copy struct into buffer
+}
+
+// Unpacking the data from the network packet into the leaderboard
+void UnpackLeaderboardData(const NetworkPacket& packet)
+{
+	std::lock_guard<std::mutex> lock1(packetMutex);
+	std::lock_guard<std::mutex> lock2(gameDataMutex);
+	memcpy(&gameDataState, packet.data, sizeof(NetworkLeaderboard)); // Copy buffer back into struct
+}
+
+void BroadcastLeaderboard(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
+{
+	NetworkPacket responsePacket;
+	responsePacket.packetID = PacketID::LEADERBOARD;
+	responsePacket.sourcePortNumber = serverPort;                    // Server's port
+
+	PackLeaderboardData(responsePacket);
+
+	for (auto& [portID, clientAddr] : clients)
+	{
+		{
+			responsePacket.destinationPortNumber = portID;            // Client's port
+			SendPacket(socket, clientAddr, responsePacket);
+		}
+	}
+}
+
+void ReceiveLeaderboard(SOCKET socket)
+{
+	sockaddr_in address{};
+	NetworkPacket packet = ReceivePacket(socket, address);
+
+	if (packet.packetID == PacketID::LEADERBOARD)
+	{
+		UnpackLeaderboardData(packet);
+	}
+
+	// Leaderboard is updated, can be shown to the players
+}
 
 void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 {
+	UNREFERENCED_PARAMETER(clients);
 	using namespace std::chrono;
 	auto prevTime = high_resolution_clock::now();
 
@@ -528,9 +576,9 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 			// rotate
 			float rotationSpeed = 3.0f; // radians/sec
 			if (input.leftKey)
-				playerData.transform.rotation -= rotationSpeed * deltaTime;
-			if (input.rightKey)
 				playerData.transform.rotation += rotationSpeed * deltaTime;
+			if (input.rightKey)
+				playerData.transform.rotation -= rotationSpeed * deltaTime;
 
 			// front back
 			float thrustSpeed = 200.0f;
@@ -544,21 +592,41 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 			// Update position using velocity
 			playerData.transform.position += playerData.transform.velocity * deltaTime;
 
+			// Wrap the ship from one end of the screen to the other
+			playerData.transform.position.x = AEWrap(playerData.transform.position.x, -400 - playerData.transform.scale.x,
+				400 + playerData.transform.scale.x);
+			playerData.transform.position.y = AEWrap(playerData.transform.position.y, -300 - playerData.transform.scale.y,
+				300 + playerData.transform.scale.y);
+
 			// space key
-			if (input.spaceKey)
+			if (input.spaceKey == true)
 			{
 				NetworkTransform bullet{};
 				bullet.position = playerData.transform.position;
 				bullet.rotation = playerData.transform.rotation;
 				bullet.velocity = forward * 400.0f; // bullet speed
 				bullet.scale = { 5.0f, 5.0f };
-				playerBulletMap[portID].push_back(bullet);
+				
+				for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
+				{
+					if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+					{
+						//playerBulletMap[portID].push_back(bullet);
+						gameDataState.objects[x].identifier = clientPort;
+						gameDataState.objects[x].transform = bullet;
+						gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
+					}
+				}
+				//gameDataState.objects[gameDataState.objectCount].identifier = serverPort;
+				//gameDataState.objects[gameDataState.objectCount].transform = bullet;
+				//gameDataState.objects[gameDataState.objectCount].type = (int)ObjectType::OBJ_BULLET;
+				//++gameDataState.objectCount;
 
 				input.spaceKey = false; // Prevent continuous firing
 			}
 
 			// Update game state (ship transform & stats)
-			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
 			{
 				if (gameDataState.objects[i].type == (int)ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == portID)
 				{
@@ -579,6 +647,35 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 			//std::cout << "Client: " << portID << " Pos: " << playerData.transform.position.x << " " << playerData.transform.position.y << std::endl;
 		}
 
+		for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
+		{
+			if (gameDataState.objects[i].type == (int)ObjectType::OBJ_ASTEROID)
+			{
+				gameDataState.objects[i].transform.position += gameDataState.objects[i].transform.velocity * deltaTime;
+				gameDataState.objects[i].transform.position.x = 
+					AEWrap(gameDataState.objects[i].transform.position.x, -400 - gameDataState.objects[i].transform.scale.x,
+					400 + gameDataState.objects[i].transform.scale.x);
+				gameDataState.objects[i].transform.position.y = 
+					AEWrap(gameDataState.objects[i].transform.position.y, -300 - gameDataState.objects[i].transform.scale.y,
+					300 + gameDataState.objects[i].transform.scale.y);
+			}
+
+			if (gameDataState.objects[i].type == (int)ObjectType::OBJ_BULLET)
+			{
+				gameDataState.objects[i].transform.position += gameDataState.objects[i].transform.velocity * deltaTime;
+
+				float minX = -400 - gameDataState.objects[i].transform.scale.x;
+				float maxX = 400 + gameDataState.objects[i].transform.scale.x;
+				float minY = -300 - gameDataState.objects[i].transform.scale.y;
+				float maxY = 300 + gameDataState.objects[i].transform.scale.y;
+
+				if (gameDataState.objects[i].transform.position.x < minX || gameDataState.objects[i].transform.position.x > maxX ||
+					gameDataState.objects[i].transform.position.y < minY || gameDataState.objects[i].transform.position.y > maxY)
+				{
+					gameDataState.objects[i].type = (int)ObjectType::OBJ_NULL;
+				}
+			}
+		}
 		// limit server loop rate
 		//std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
