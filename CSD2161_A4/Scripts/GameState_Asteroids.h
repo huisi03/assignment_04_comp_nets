@@ -26,7 +26,7 @@ void GameStateAsteroidsFree(void);
 void GameStateAsteroidsUnload(void);
 
 unsigned long LoadHighScore();
-void SaveHighScore(unsigned long High_Score);
+void SaveHighScore(unsigned long highscore);
 
 // ---------------------------------------------------------------------------
 

@@ -60,7 +60,7 @@ struct NetworkPlayerData
 #define MAX_NAME_LENGTH			8	// Maximum length of a name
 #define TIME_FORMAT				20	// Format: "YYYY-MM-DD HH:MM:SS"
 #define MAX_LEADERBOARD_SCORES	20	// Maximum number of scores allowed on the leaderboard
-#define LEADERBOARD_FILE_NAME	"Resources/Leaderboard.txt"	// File name for the leaderboard
+#define LEADERBOARD_FILE_NAME	"Resources/Leaderboard.dat"	// File name for the leaderboard
 
 // Struct to represent a player's score and additional data for the leaderboard
 struct NetworkScore
