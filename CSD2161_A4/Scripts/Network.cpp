@@ -727,7 +727,7 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 						}
 
 						// Destroy asteroid and bullet
-						asteroid.type = (int)ObjectType::OBJ_NULL;
+						//asteroid.type = (int)ObjectType::OBJ_NULL;
 						other.type = (int)ObjectType::OBJ_NULL;
 
 						// Optional: Spawn 1–2 new asteroids
@@ -735,18 +735,18 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 						//for (int k = 0; k < count; ++k)
 						{
 							// Find an empty slot
-							for (int slot = 0; slot < MAX_NETWORK_OBJECTS; ++slot)
+							//for (int slot = 0; slot < MAX_NETWORK_OBJECTS; ++slot)
 							{
-								if (gameDataState.objects[slot].type == (int)ObjectType::OBJ_NULL)
+								//if (gameDataState.objects[slot].type == (int)ObjectType::OBJ_NULL)
 								{
 									AEVec2 pos = asteroid.transform.position;
-									AEVec2 scale = { AERandFloat() * 40 + 10, AERandFloat() * 40 + 10 };
-									AEVec2 vel = { AERandFloat() * 100 - 50, AERandFloat() * 100 - 50 };
+									asteroid.transform.scale = { AERandFloat() * 40 + 10, AERandFloat() * 40 + 10 };
+									asteroid.transform.velocity = { AERandFloat() * 100 - 50, AERandFloat() * 100 - 50 };
 
-									gameDataState.objects[slot].type = (int)ObjectType::OBJ_ASTEROID;
-									gameDataState.objects[slot].identifier = (uint16_t)slot;
-									gameDataState.objects[slot].transform = NetworkTransform(pos, vel, 0.0f, scale);
-									break;
+									//gameDataState.objects[slot].type = (int)ObjectType::OBJ_ASTEROID;
+									//gameDataState.objects[slot].identifier = (uint16_t)slot;
+									//gameDataState.objects[slot].transform = NetworkTransform(pos, vel, 0.0f, scale);
+									//break;
 								}
 							}
 						}
