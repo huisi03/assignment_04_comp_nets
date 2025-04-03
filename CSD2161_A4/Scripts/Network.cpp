@@ -387,27 +387,27 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 	PlayerInput& playerInput = playerInputMap[clientPortID];
 	if (packet.packetID == InputKey::NONE)
 	{
-		//playersData[clientPortID].transform.velocity = { 0, 0 };
+		playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		//playersData[clientPortID].transform.position = { 10, 10 };
+		playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		//playersData[clientPortID].transform.position = { 20, 20 };
+		playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
-		//playersData[clientPortID].transform.position = { 30, 30 };
+		playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
-		//playersData[clientPortID].transform.position = { 40, 40 };
+		playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
 	else if (packet.packetID == InputKey::SPACE)
