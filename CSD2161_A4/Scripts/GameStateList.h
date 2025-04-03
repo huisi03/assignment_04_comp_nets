@@ -25,6 +25,7 @@ enum
 	GS_ASTEROIDS = 0, 
     GS_LOBBY,
     GS_MAINMENU,
+    GS_END_GAME,
 	// special game state. Do not change
 	GS_RESTART,
 	GS_QUIT, 

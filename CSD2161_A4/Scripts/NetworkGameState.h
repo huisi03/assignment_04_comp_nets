@@ -95,6 +95,8 @@ struct NetworkGameState
 };
 #pragma pack()
 
+void Render(NetworkGameState& gameState);
+
 // Network game states (To be passed via UDP)
 //extern std::mutex gameStateMutex;
 //extern NetworkGameState currentGameState;

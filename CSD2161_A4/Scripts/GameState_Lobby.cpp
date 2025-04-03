@@ -37,18 +37,18 @@ void GameStateLobbyInit() {
 
 void GameStateLobbyUpdate() {
     // Only update connectedClients from clientsJoiningGame if we're the server
-    if (networkType == NetworkType::SERVER) {
-        //connectedClients = static_cast<int>(clientsJoiningGame.size());
-    }
+    //if (networkType == NetworkType::SERVER) {
+    //    //connectedClients = static_cast<int>(clientsJoiningGame.size());
+    //}
 
     // Check if game state start packet received
-    sockaddr_in addr{};
-    NetworkPacket packet = ReceivePacket(udpClientSocket, addr);
-    /*if (HandleGameStateStart(packet)) {
-        gGameStateNext = GS_ASTEROIDS;
-    }*/
+    //sockaddr_in addr{};
+    //NetworkPacket packet = ReceivePacket(udpClientSocket, addr);
+    ///*if (HandleGameStateStart(packet)) {
+    //    gGameStateNext = GS_ASTEROIDS;
+    //}*/
 
-    if (connectedClients >= 1 && !countdownStarted) {
+   /* if (connectedClients >= 1 && !countdownStarted) {
         countdownStarted = true;
         lobbyTimer = 10.0;
     }
@@ -58,7 +58,7 @@ void GameStateLobbyUpdate() {
         if (lobbyTimer <= 0.0) {
             countdownStarted = false;
         }
-    }
+    }*/
 
     //RetransmitPacket();
 }
