@@ -134,6 +134,22 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                         playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
                         break;
                     }
+                    case 3:
+                    {
+                        AEVec2 posVec{ 300, 300 };
+                        AEVec2 scaleVec{ 16, 16 };
+
+                        playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
+                        break;
+                    }
+                    case 4:
+                    {
+                        AEVec2 posVec{ 400, 400 };
+                        AEVec2 scaleVec{ 16, 16 };
+
+                        playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
+                        break;
+                    }
                     }
                     std::cout << "Num Players: " << playerDataMap.size() << std::endl;
                 }
@@ -285,10 +301,13 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
             
         }
 
-        // End of game, receive leaderboard
-        ReceiveLeaderboard(udpClientSocket);
+        if (gGameStateCurr == GS_END_GAME) {
+            // End of game, receive leaderboard
+            ReceiveLeaderboard(udpClientSocket);
 
-        // Show leaderboard
+            // Show leaderboard
+        }
+
 
         Disconnect(udpClientSocket);
 

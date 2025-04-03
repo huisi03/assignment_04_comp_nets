@@ -40,9 +40,9 @@
 #define TIMEOUT_MS		    1000
 #define TIMEOUT_MS_MAX      10000
 
-#define WIND_SIZE           8
+#define WIND_SIZE           32
 #define SEQ_NUM_MIN         0
-#define SEQ_NUM_SPACE       16
+#define SEQ_NUM_SPACE       64
 
 enum class NetworkType 
 {
