@@ -459,6 +459,7 @@ void GameStateAsteroidsUpdate(void)
 
     if (networkType == NetworkType::CLIENT) {
 
+
         // spawning the ship
         for (auto const& obj : gameDataState.objects) {
 

@@ -168,7 +168,7 @@ void LoadLeaderboard(char const* filename)
 	std::ifstream file(filename, std::ios::binary);
 	if (file) file.read(reinterpret_cast<char*>(&leaderboard), sizeof(NetworkLeaderboard));
 	file.close();
-	std::cout << leaderboard.scoreCount << std::endl;
+	//std::cout << leaderboard.scoreCount << std::endl;
 }
 
 std::vector<std::string> GetTopPlayersFromLeaderboard(uint32_t playerCount)
