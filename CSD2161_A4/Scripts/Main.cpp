@@ -322,7 +322,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
         pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", Fontsize);
 
         // Changing the window title
-        AESysSetWindowTitle("Asteroids!");
+        AESysSetWindowTitle("Spaceships!");
 
         //set background color
         AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);

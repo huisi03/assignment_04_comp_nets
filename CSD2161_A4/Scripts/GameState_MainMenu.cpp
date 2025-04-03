@@ -77,7 +77,7 @@ void GameStateMainMenuDraw(void) {
 	textposition.y = 135.f;
 	textposition = Utilities::Worldtoscreencoordinates(textposition);  
 	memset(strBuffer, 0, 100 * sizeof(char));
-	sprintf_s(strBuffer, "Asteroids Game");
+	sprintf_s(strBuffer, "Spaceships Game");
 	AEGfxPrint((s8)pFont, strBuffer, textposition.x, textposition.y, 1.f, 1.f, 0.f, 1.f, 1.f); // prints the game name. 
 
     textposition.x = -130.f;
