@@ -40,7 +40,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 const unsigned int	GAME_OBJ_NUM_MAX = 32;			// The total number of different objects (Shapes)
 const unsigned int	GAME_OBJ_INST_NUM_MAX = 2048;			// The total number of different game object instances
 
-const unsigned int	SHIP_INITIAL_NUM = 0;			// initial number of ship lives
+const unsigned int	SHIP_INITIAL_NUM = 3;			// initial number of ship lives
 const float			SHIP_SCALE_X = 16.0f;		// ship scale x
 const float			SHIP_SCALE_Y = 16.0f;		// ship scale y
 const float			BULLET_SCALE_X = 20.0f;		// bullet scale x
@@ -380,6 +380,8 @@ void GameStateAsteroidsInit(void)
 
         }
 
+        sScore = 0;
+        sShipLives = SHIP_INITIAL_NUM;
     }
 
     if (networkType == NetworkType::SINGLE_PLAYER) {
