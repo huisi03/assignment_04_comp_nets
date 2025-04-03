@@ -217,11 +217,25 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			NetworkPacket packet;
 			packet.packetID = InputKey::NONE;
 
-			if (GetAsyncKeyState(VK_UP) & 0x8000)      packet.packetID = InputKey::UP;
-			else if (GetAsyncKeyState(VK_DOWN) & 0x8000) packet.packetID = InputKey::DOWN;
-			else if (GetAsyncKeyState(VK_LEFT) & 0x8000) packet.packetID = InputKey::LEFT;
-			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000) packet.packetID = InputKey::RIGHT;
-			else if (GetAsyncKeyState(VK_SPACE) & 0x8000) packet.packetID = InputKey::SPACE;
+			static bool spacePreviouslyPressed = false;
+
+			if (GetAsyncKeyState(VK_UP) & 0x8000)
+				packet.packetID = InputKey::UP;
+			else if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+				packet.packetID = InputKey::DOWN;
+			else if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+				packet.packetID = InputKey::LEFT;
+			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+				packet.packetID = InputKey::RIGHT;
+			else if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && !spacePreviouslyPressed)
+			{
+				packet.packetID = InputKey::SPACE;
+				spacePreviouslyPressed = true;
+			}
+			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000))
+			{
+				spacePreviouslyPressed = false;
+			}
 
 			packet.sourcePortNumber = GetClientPort();
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
