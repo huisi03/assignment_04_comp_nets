@@ -389,7 +389,7 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 		}
 
 		// Small sleep to prevent CPU from running at 100%
-		Sleep(1);
+		//Sleep(1);
 	}
 }
 
@@ -400,27 +400,27 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 	PlayerInput& playerInput = playerInputMap[clientPortID];
 	if (packet.packetID == InputKey::NONE)
 	{
-		playersData[clientPortID].transform.velocity = { 0, 0 };
+		//playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
 	else if (packet.packetID == InputKey::UP)
 	{
-		playersData[clientPortID].transform.position = { 10, 10 };
+		//playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
 	else if (packet.packetID == InputKey::DOWN)
 	{
-		playersData[clientPortID].transform.position = { 20, 20 };
+		//playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
 	else if (packet.packetID == InputKey::RIGHT)
 	{
-		playersData[clientPortID].transform.position = { 30, 30 };
+		//playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
 	else if (packet.packetID == InputKey::LEFT)
 	{
-		playersData[clientPortID].transform.position = { 40, 40 };
+		//playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
 	else if (packet.packetID == InputKey::SPACE)
@@ -457,7 +457,7 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 {
 	while (true)
 	{
-		Sleep(16); // Approx 60 updates per second (1000ms / 60)
+		//Sleep(16); // Approx 60 updates per second (1000ms / 60)
 
 		// 1. **Send the full game state to all clients**
 		NetworkPacket responsePacket;
@@ -509,29 +509,60 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 
 void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 {
-
-	UNREFERENCED_PARAMETER(clients);
+	using namespace std::chrono;
+	auto prevTime = high_resolution_clock::now();
 
 	while (true)
 	{
+		auto currTime = high_resolution_clock::now();
+		float deltaTime = duration<float>(currTime - prevTime).count();
+		prevTime = currTime;
 
+		std::lock_guard<std::mutex> lock(gameDataMutex);
 
-
-
-
-
-
-
-
-
-		// Set the player data inside the gameState
 		for (auto& [portID, playerData] : playerDataMap)
 		{
+			PlayerInput& input = playerInputMap[portID];
+
+			// rotate
+			float rotationSpeed = 3.0f; // radians/sec
+			if (input.leftKey)
+				playerData.transform.rotation -= rotationSpeed * deltaTime;
+			if (input.rightKey)
+				playerData.transform.rotation += rotationSpeed * deltaTime;
+
+			// front back
+			float thrustSpeed = 200.0f;
+			AEVec2 forward{ cosf(playerData.transform.rotation), sinf(playerData.transform.rotation) };
+
+			if (input.upKey)
+				playerData.transform.velocity += forward * thrustSpeed * deltaTime;
+			if (input.downKey)
+				playerData.transform.velocity -= forward * thrustSpeed * deltaTime;
+
+			// Update position using velocity
+			playerData.transform.position += playerData.transform.velocity * deltaTime;
+
+			// space key
+			if (input.spaceKey)
+			{
+				NetworkTransform bullet{};
+				bullet.position = playerData.transform.position;
+				bullet.rotation = playerData.transform.rotation;
+				bullet.velocity = forward * 400.0f; // bullet speed
+				bullet.scale = { 5.0f, 5.0f };
+				playerBulletMap[portID].push_back(bullet);
+
+				input.spaceKey = false; // Prevent continuous firing
+			}
+
+			// Update game state (ship transform & stats)
 			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
 			{
-				if (gameDataState.objects[i].type == 1 && gameDataState.objects[i].identifier == portID)
+				if (gameDataState.objects[i].type == (int)ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == portID)
 				{
 					gameDataState.objects[i].transform = playerData.transform;
+
 					for (int j = 0; j < static_cast<int>(gameDataState.playerCount); ++j)
 					{
 						if (gameDataState.playerData[j].identifier == portID)
@@ -543,12 +574,11 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 					break;
 				}
 			}
-			std::cout << "Client: " << portID << " position: " << playerData.transform.position.x << " " << playerData.transform.position.y << std::endl;
+
+			//std::cout << "Client: " << portID << " Pos: " << playerData.transform.position.x << " " << playerData.transform.position.y << std::endl;
 		}
-		
 
+		// limit server loop rate
+		//std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
-
 }
-
-

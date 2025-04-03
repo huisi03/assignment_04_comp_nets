@@ -1,2 +1,2 @@
-serverIp 10.132.52.255
+serverIp 10.132.40.90
 serverUdpPort 9000

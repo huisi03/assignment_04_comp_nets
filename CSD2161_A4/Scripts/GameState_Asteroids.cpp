@@ -448,7 +448,7 @@ void GameStateAsteroidsUpdate(void)
 
     if (networkType == NetworkType::CLIENT) {
 
-        std::cout << gameDataState.objectCount << std::endl;
+        //std::cout << gameDataState.objectCount << std::endl;
         // spawning the ship
       
 
@@ -456,7 +456,7 @@ void GameStateAsteroidsUpdate(void)
 
                 if (obj.type == 1) {
 
-                    std::cout << "IDENTIFIER: " << obj.identifier << "  x: " << obj.transform.position.x << " y: " << obj.transform.position.y << std::endl;
+                    //std::cout << "IDENTIFIER: " << obj.identifier << "  x: " << obj.transform.position.x << " y: " << obj.transform.position.y << std::endl;
                     AEVec2 scale;
                     AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
                     gameObjInstDestroy(ships_multiplayer[obj.identifier]);
