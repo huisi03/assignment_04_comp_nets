@@ -1085,16 +1085,16 @@ void gameObjInstCreateRandomAsteroid()
 \return void
 */
 /******************************************************************************/
-void RenderText(AEVec2 position, f32 fontSize, char const* text)
+void RenderText(AEVec2 position, f32 fSize, char const* text)
 {
 	f32 _width, _height;
 
-	AEGfxGetPrintSize(pFont, text, fontSize / 72, &_width, &_height);
+	AEGfxGetPrintSize(pFont, text, fSize / 72, &_width, &_height);
 
 	_width = position.x / SCREEN_SIZE_X - _width / 2.f;
 	_height = position.y / SCREEN_SIZE_Y - _height / 2.f;
 
-	AEGfxPrint(pFont, text, _width, _height, static_cast<f32>(fontSize) / 72, 1, 1, 1, 1);
+	AEGfxPrint(pFont, text, _width, _height, static_cast<f32>(fSize) / 72, 1, 1, 1, 1);
 }
 
 /******************************************************************************/

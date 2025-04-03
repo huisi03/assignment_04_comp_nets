@@ -44,8 +44,8 @@ enum class GameType {
 
 extern float	g_dt;
 extern double	g_appTime;
-extern int		pFont; // this is for the font which is used to display the text. 
-extern int      Fontsize;
+extern s8		pFont; // this is for the font which is used to display the text. 
+extern int      fontSize;
 extern int      g_show;
 extern HINSTANCE g_instanceH;
 extern GameType gameType;

@@ -23,7 +23,7 @@ static double lobbyTimer = 10.0;
 static bool countdownStarted = false;
 int connectedClients = 0; 
 static const int requiredClients = 1;
-extern int pFont; 
+//extern s8 pFont; 
 
 void GameStateLobbyLoad() {
     // Nothing needed here

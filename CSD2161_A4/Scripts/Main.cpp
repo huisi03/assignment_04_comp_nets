@@ -26,8 +26,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 // Globals
 float	 g_dt;
 double	 g_appTime;
-int			pFont; // this is for the text
-int	Fontsize = 25; // size of the text
+s8			pFont; // this is for the text
+int	fontSize = 25; // size of the text
 GameType    gameType;
 int         g_show;
 HINSTANCE   g_instanceH;
@@ -363,7 +363,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
         // Initialize the system
         AESysInit(instanceH, show, 800, 600, 1, 60, false, NULL);
 
-        pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", Fontsize);
+        pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", fontSize);
 
         // Changing the window title
         AESysSetWindowTitle("Spaceships!");

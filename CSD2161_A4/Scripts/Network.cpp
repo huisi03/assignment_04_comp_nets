@@ -865,7 +865,7 @@ void Render(NetworkGameState& gameState)
     // Initialize the system
     AESysInit(g_instanceH, g_show, 800, 600, 1, 60, false, NULL);
 
-    pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", Fontsize);
+    pFont = (int)AEGfxCreateFont("Resources/Arial Italic.ttf", fontSize);
 
     // Changing the window title
     AESysSetWindowTitle("Asteroids!");
