@@ -450,18 +450,18 @@ void SpawnInitAsteroids(int starting_index, int count) {
         break;
     }
 
-    // randomise the velocity between (-min to -max and min to max)
-    int sign = (AERandFloat() > 0.5f) ? 1 : -1;
-    vel.x = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
+    for (int i = starting_index; i < starting_index + count; ++i) {
 
-    sign = (AERandFloat() > 0.5f) ? 1 : -1;
-    vel.y = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
+		// randomise the velocity between (-min to -max and min to max)
+		int sign = (AERandFloat() > 0.5f) ? 1 : -1;
+		vel.x = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
 
-    // randomise the scale between min and max
-    scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
-    scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
+		sign = (AERandFloat() > 0.5f) ? 1 : -1;
+		vel.y = sign * (ASTEROID_MIN_VEL + AERandFloat() * (ASTEROID_MAX_VEL - ASTEROID_MIN_VEL));
 
-    for (int i = starting_index; i <= starting_index + count; ++i) {
+		// randomise the scale between min and max
+		scale.x = ASTEROID_MIN_SCALE_X + AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X);
+		scale.y = ASTEROID_MIN_SCALE_Y + AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y);
 
         gameDataState.objects[i].transform.position = pos;
         gameDataState.objects[i].transform.scale = scale;

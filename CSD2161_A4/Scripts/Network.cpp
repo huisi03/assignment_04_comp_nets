@@ -1,4 +1,5 @@
 #include "Network.h"
+#include "Collision.h"
 
 
 // Define
@@ -487,7 +488,7 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 		if (receivedPacket.packetID == GAME_STATE_UPDATE)
 		{
 			UnpackGateStateData(receivedPacket);
-			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
 			{
 				if (gameDataState.objects[i].type == 1 && gameDataState.objects[i].identifier == clientPort)
 				{
@@ -559,47 +560,27 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 				bullet.rotation = playerData.transform.rotation;
 				bullet.velocity = forward * 400.0f; // bullet speed
 				bullet.scale = { 5.0f, 5.0f };
-				playerBulletMap[portID].push_back(bullet);
-
-				gameDataState.objects[gameDataState.objectCount].identifier = serverPort;
-				gameDataState.objects[gameDataState.objectCount].transform = bullet;
-				gameDataState.objects[gameDataState.objectCount].type = (int)ObjectType::OBJ_BULLET;
-				++gameDataState.objectCount;
+				
+				for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
+				{
+					if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+					{
+						//playerBulletMap[portID].push_back(bullet);
+						gameDataState.objects[x].identifier = clientPort;
+						gameDataState.objects[x].transform = bullet;
+						gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
+					}
+				}
+				//gameDataState.objects[gameDataState.objectCount].identifier = serverPort;
+				//gameDataState.objects[gameDataState.objectCount].transform = bullet;
+				//gameDataState.objects[gameDataState.objectCount].type = (int)ObjectType::OBJ_BULLET;
+				//++gameDataState.objectCount;
 
 				input.spaceKey = false; // Prevent continuous firing
 			}
 
-			for (NetworkTransform& asteroid : asteroids)
-			{
-				//update position based on current velocity
-				asteroid.position += asteroid.velocity * deltaTime;
-
-				//around screen boundaries
-				float minX = AEGfxGetWinMinX();
-				float maxX = AEGfxGetWinMaxX();
-				float minY = AEGfxGetWinMinY();
-				float maxY = AEGfxGetWinMaxY();
-
-				asteroid.position.x = AEWrap(asteroid.position.x, minX, maxX);
-				asteroid.position.y = AEWrap(asteroid.position.y, minY, maxY);
-			}
-
-			// sychronize udated asteroid transforms to gameDataState
-			for (int i = 0; i < static_cast<int>(asteroids.size()); ++i)
-			{
-				for (int j = 0; j < static_cast<int>(gameDataState.objectCount); ++j)
-				{
-					if (gameDataState.objects[j].type == (int)ObjectType::OBJ_ASTEROID &&
-						gameDataState.objects[j].identifier == i) 
-					{
-						gameDataState.objects[j].transform = asteroids[i];
-					}
-				}
-			}
-
-
 			// Update game state (ship transform & stats)
-			for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
 			{
 				if (gameDataState.objects[i].type == (int)ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == portID)
 				{
@@ -620,12 +601,33 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 			//std::cout << "Client: " << portID << " Pos: " << playerData.transform.position.x << " " << playerData.transform.position.y << std::endl;
 		}
 
-		for (int i = 0; i < static_cast<int>(gameDataState.objectCount); ++i)
+		for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
 		{
-			if (gameDataState.objects[i].type == (int)ObjectType::OBJ_BULLET ||
-				gameDataState.objects[i].type == (int)ObjectType::OBJ_ASTEROID)
+			if (gameDataState.objects[i].type == (int)ObjectType::OBJ_ASTEROID)
 			{
 				gameDataState.objects[i].transform.position += gameDataState.objects[i].transform.velocity * deltaTime;
+				gameDataState.objects[i].transform.position.x = 
+					AEWrap(gameDataState.objects[i].transform.position.x, -400 - gameDataState.objects[i].transform.scale.x,
+					400 + gameDataState.objects[i].transform.scale.x);
+				gameDataState.objects[i].transform.position.y = 
+					AEWrap(gameDataState.objects[i].transform.position.y, -300 - gameDataState.objects[i].transform.scale.y,
+					300 + gameDataState.objects[i].transform.scale.y);
+			}
+
+			if (gameDataState.objects[i].type == (int)ObjectType::OBJ_BULLET)
+			{
+				gameDataState.objects[i].transform.position += gameDataState.objects[i].transform.velocity * deltaTime;
+
+				float minX = -400 - gameDataState.objects[i].transform.scale.x;
+				float maxX = 400 + gameDataState.objects[i].transform.scale.x;
+				float minY = -300 - gameDataState.objects[i].transform.scale.y;
+				float maxY = 300 + gameDataState.objects[i].transform.scale.y;
+
+				if (gameDataState.objects[i].transform.position.x < minX || gameDataState.objects[i].transform.position.x > maxX ||
+					gameDataState.objects[i].transform.position.y < minY || gameDataState.objects[i].transform.position.y > maxY)
+				{
+					gameDataState.objects[i].type = (int)ObjectType::OBJ_NULL;
+				}
 			}
 		}
 		// limit server loop rate
