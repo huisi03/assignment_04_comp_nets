@@ -39,7 +39,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 const unsigned int	GAME_OBJ_NUM_MAX		= 32;			// The total number of different objects (Shapes)
 const unsigned int	GAME_OBJ_INST_NUM_MAX	= 2048;			// The total number of different game object instances
 
-const unsigned int	SHIP_INITIAL_NUM		= 3;			// initial number of ship lives
+const unsigned int	SHIP_INITIAL_NUM		= 0;			// initial number of ship lives
 const float			SHIP_SCALE_X			= 16.0f;		// ship scale x
 const float			SHIP_SCALE_Y			= 16.0f;		// ship scale y
 const float			BULLET_SCALE_X			= 20.0f;		// bullet scale x
@@ -151,17 +151,18 @@ static GameObjInst *		spShip;										// Pointer to the "Ship" game object inst
 static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
 
 // number of ship available (lives 0 = game over)
-static long					sShipLives;									// The number of lives left
+//static long					sShipLives;									// The number of lives left
 
+long					sShipLives;
 // the score = number of asteroid destroyed
 static unsigned long		sScore;										// Current score
 
 // font reference for text rendering
 const char*					pFontURL = "Resources/Arial Italic.ttf";	// font url
-// s8							pFont;										// current font selected
+//s8							pFont;										// current font selected
 
 //ensures the leaderboard is updated only once when game over triggers.
-//after submission, the flag is set to true — so all future frames skip the submission.
+//after submission, the flag is set to true ï¿½ so all future frames skip the submission.
 //prevent from dulpicate saves
 static bool scoreAlreadySubmitted = false;
 // ---------------------------------------------------------------------------
@@ -390,8 +391,7 @@ void GameStateAsteroidsInit(void)
 	sScore      = 0;
 	sShipLives  = SHIP_INITIAL_NUM;
 	High_Score = LoadHighScore();  // Load the high score when the game starts 
-	
-	LoadLeaderboard();
+
 }
 
 /******************************************************************************/
@@ -816,25 +816,6 @@ void GameStateAsteroidsDraw(void)
 		sprintf_s(strBuffer, "Press R to try again!");
 		AEVec2Set(&pos, 0, -SCREEN_SIZE_Y + 75);
 		RenderText(pos, 36, strBuffer);
-
-		if (!scoreAlreadySubmitted)
-		{
-			std::string timestamp = getCurrentTimeStamp();
-			AddScoreToLeaderboard(0, "Player", sScore, timestamp.c_str());
-			SaveLeaderboard();
-			scoreAlreadySubmitted = true;
-		}
-
-		// Display the leaderboard
-		std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
-		int yOffset = -150; // starting position for leaderboard display
-		for (const auto& scoreEntry : topScores)
-		{
-			sprintf_s(strBuffer, "%s", scoreEntry.c_str());
-			AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
-			RenderText(pos, 24, strBuffer);
-			yOffset -= 60; // space between entries
-		}
 	}
 
 	else

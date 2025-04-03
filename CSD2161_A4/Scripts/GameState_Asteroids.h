@@ -16,6 +16,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #ifndef CSD1130_GAME_STATE_PLAY_H_
 #define CSD1130_GAME_STATE_PLAY_H_
 
+#include "AEVec2.h"
+
 // ---------------------------------------------------------------------------
 
 void GameStateAsteroidsLoad(void);
@@ -27,7 +29,10 @@ void GameStateAsteroidsUnload(void);
 
 unsigned long LoadHighScore();
 void SaveHighScore(unsigned long highscore);
+void RenderText(AEVec2 position, f32 fontSize, char const* text);
 
+
+extern long					sShipLives;
 // ---------------------------------------------------------------------------
 
 #endif // CSD1130_GAME_STATE_PLAY_H_
