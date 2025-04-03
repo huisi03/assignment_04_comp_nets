@@ -404,8 +404,10 @@ NetworkPacket ReceivePacket(SOCKET socket, sockaddr_in& address)
 void RetransmitPacket() {
 
     std::map<uint32_t, uint64_t> accumulative_timers{};
-    for (auto& [seqNum, time] : timers) {
-        accumulative_timers[seqNum] = 0;
+    for (std::pair<const uint32_t, uint64_t> time_pair: timers) {
+        uint32_t seqNum = time_pair.first;
+        uint64_t time = time_pair.second;
+        accumulative_timers.insert({ seqNum, time });
     }
 
     // Retransmission
