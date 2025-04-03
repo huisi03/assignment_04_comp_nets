@@ -114,6 +114,22 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
 							break;
 						}
+						case 3:
+						{
+							AEVec2 posVec{ 100, 200 };
+							AEVec2 scaleVec{ 16, 16 };
+
+							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
+							break;
+						}
+						case 4:
+						{
+							AEVec2 posVec{ 200, 100 };
+							AEVec2 scaleVec{ 16, 16 };
+
+							playerDataMap.emplace(packet.sourcePortNumber, PlayerData(posVec, scaleVec));
+							break;
+						}
 					}
 					std::cout << "Num Players: " << playerDataMap.size() << std::endl;
 				}
