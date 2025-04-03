@@ -169,8 +169,8 @@ static bool scoreAlreadySubmitted = false;
 
 
 std::map<uint16_t, GameObjInst*> ships_multiplayer{};
-std::vector<GameObjInst*> asteroids_multiplier{};
-std::vector<GameObjInst*> bullets_multiplier{};
+std::vector<GameObjInst*> asteroids_multiplayer{};
+std::vector<GameObjInst*> bullets_multiplayer{};
 // ---------------------------------------------------------------------------
 
 // functions to create/destroy a game object instance
@@ -377,10 +377,21 @@ void GameStateAsteroidsInit(void)
 
         // spawning the ship
         for (auto const& obj : gameDataState.objects) {
-            if (obj.type == 1) {
+            if (obj.type == (int)ObjectType::OBJ_SHIP) {
+
                 AEVec2 scale;
-                AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
+                AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
                 ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+
+            } else if (obj.type == (int)ObjectType::OBJ_ASTEROID) {
+                AEVec2 scale;
+                AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+                asteroids_multiplayer.push_back(gameObjInstCreate(TYPE_ASTEROID, &scale, nullptr, nullptr, 0.0f));
+            }
+            else if (obj.type == (int)ObjectType::OBJ_BULLET) {
+                AEVec2 scale;
+                AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+                bullets_multiplayer.push_back(gameObjInstCreate(TYPE_BULLET, &scale, nullptr, nullptr, 0.0f));
             }
 
         }
@@ -448,42 +459,117 @@ void GameStateAsteroidsUpdate(void)
 
     if (networkType == NetworkType::CLIENT) {
 
-        std::cout << gameDataState.objectCount << std::endl;
         // spawning the ship
-      
+        for (auto const& obj : gameDataState.objects) {
 
-            for (auto const& obj : gameDataState.objects) {
+            if (obj.type == (int)ObjectType::OBJ_SHIP) {
 
-                if (obj.type == 1) {
+                AEVec2 scale;
+                AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+                gameObjInstDestroy(ships_multiplayer[obj.identifier]);
 
-                    std::cout << "IDENTIFIER: " << obj.identifier << "  x: " << obj.transform.position.x << " y: " << obj.transform.position.y << std::endl;
-                    AEVec2 scale;
-                    AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
-                    gameObjInstDestroy(ships_multiplayer[obj.identifier]);
-                   
-                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+                ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
 
-                    AEMtx33 trans, rot, scale_mat;
+                AEMtx33 trans, rot, scale_mat;
 
-                    // Compute the scaling matrix
-                    AEMtx33Scale(&scale_mat, SHIP_SCALE_X, SHIP_SCALE_Y);
+                // Compute the scaling matrix
+                AEMtx33Scale(&scale_mat, obj.transform.scale.x, obj.transform.scale.y);
 
-                    // Compute the rotation matrix 
-                    AEMtx33Rot(&rot, obj.transform.rotation);
+                // Compute the rotation matrix 
+                AEMtx33Rot(&rot, obj.transform.rotation);
 
-                    // Compute the translation matrix
-                    AEMtx33Trans(&trans, obj.transform.position.x, obj.transform.position.y);
+                // Compute the translation matrix
+                AEMtx33Trans(&trans, obj.transform.position.x, obj.transform.position.y);
 
-                    // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
-                    AEMtx33 result;
-                    AEMtx33Concat(&result, &rot, &scale_mat);
-                    AEMtx33Concat(&result, &trans, &result);
+                // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
+                AEMtx33 result;
+                AEMtx33Concat(&result, &rot, &scale_mat);
+                AEMtx33Concat(&result, &trans, &result);
 
-                    // assign game object with the concat transform result
-                    ships_multiplayer[obj.identifier]->transform = result;
-                }
+                // assign game object with the concat transform result
+                ships_multiplayer[obj.identifier]->transform = result;
+            }
+        }
+
+        for (GameObjInst* obj : asteroids_multiplayer) {
+
+            gameObjInstDestroy(obj);
+        }
+        asteroids_multiplayer.clear();
+
+        for (auto const& obj : gameDataState.objects) {
+
+            if (obj.type == (int)ObjectType::OBJ_ASTEROID) {
+
+                AEVec2 scale;
+                AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+
+                GameObjInst* p = gameObjInstCreate(TYPE_ASTEROID, &scale, nullptr, nullptr, 0.0f);
+
+                AEMtx33 trans, rot, scale_mat;
+
+                // Compute the scaling matrix
+                AEMtx33Scale(&scale_mat, obj.transform.scale.x, obj.transform.scale.y);
+
+                // Compute the rotation matrix 
+                AEMtx33Rot(&rot, obj.transform.rotation);
+
+                // Compute the translation matrix
+                AEMtx33Trans(&trans, obj.transform.position.x, obj.transform.position.y);
+
+                // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
+                AEMtx33 result;
+                AEMtx33Concat(&result, &rot, &scale_mat);
+                AEMtx33Concat(&result, &trans, &result);
+
+                // assign game object with the concat transform result
+                p->transform = result;
+
+                asteroids_multiplayer.push_back(p);
 
             }
+            
+        }
+
+        for (GameObjInst* obj : bullets_multiplayer) {
+
+            gameObjInstDestroy(obj);
+        }
+        bullets_multiplayer.clear();
+
+        for (auto const& obj : gameDataState.objects) {
+
+            if (obj.type == (int)ObjectType::OBJ_BULLET) {
+
+                AEVec2 scale;
+                AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+
+                GameObjInst* p = gameObjInstCreate(TYPE_BULLET, &scale, nullptr, nullptr, 0.0f);
+
+                AEMtx33 trans, rot, scale_mat;
+
+                // Compute the scaling matrix
+                AEMtx33Scale(&scale_mat, obj.transform.scale.x, obj.transform.scale.y);
+
+                // Compute the rotation matrix 
+                AEMtx33Rot(&rot, obj.transform.rotation);
+
+                // Compute the translation matrix
+                AEMtx33Trans(&trans, obj.transform.position.x, obj.transform.position.y);
+
+                // Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
+                AEMtx33 result;
+                AEMtx33Concat(&result, &rot, &scale_mat);
+                AEMtx33Concat(&result, &trans, &result);
+
+                // assign game object with the concat transform result
+                p->transform = result;
+
+                bullets_multiplayer.push_back(p);
+
+            }
+
+        }
 
 
         return;
@@ -860,6 +946,32 @@ void GameStateAsteroidsDraw(void)
             AEGfxMeshDraw(pInst->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
         }
 
+        // spawning the asteroids
+        for (GameObjInst* obj : asteroids_multiplayer) {
+
+            // skip non-active object
+            if ((obj->flag & FLAG_ACTIVE) == 0)
+                continue;
+
+            // Set the current object instance's transform matrix using "AEGfxSetTransform"
+            AEGfxSetTransform(obj->transform.m);
+
+            // Draw the shape used by the current object instance using "AEGfxMeshDraw"
+            AEGfxMeshDraw(obj->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
+        }
+
+        for (GameObjInst* obj : bullets_multiplayer) {
+
+            // skip non-active object
+            if ((obj->flag & FLAG_ACTIVE) == 0)
+                continue;
+
+            // Set the current object instance's transform matrix using "AEGfxSetTransform"
+            AEGfxSetTransform(obj->transform.m);
+
+            // Draw the shape used by the current object instance using "AEGfxMeshDraw"
+            AEGfxMeshDraw(obj->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
+        }
 
     }
     else {
