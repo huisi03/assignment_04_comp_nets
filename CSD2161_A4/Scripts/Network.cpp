@@ -614,6 +614,7 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 						gameDataState.objects[x].identifier = clientPort;
 						gameDataState.objects[x].transform = bullet;
 						gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
+						break;
 					}
 				}
 				//gameDataState.objects[gameDataState.objectCount].identifier = serverPort;
