@@ -400,109 +400,109 @@ void GameStateAsteroidsInit(void)
 /******************************************************************************/
 void GameStateAsteroidsUpdate(void)
 {
-	// stop updating logic if player is dead
+	//// stop updating logic if player is dead
 	if (sShipLives < 0)
 	{
-		if (AEInputCheckTriggered(AEVK_R))
-		{
-			gGameStateCurr = GS_RESTART;
-			scoreAlreadySubmitted = false;
-		}
+	//	if (AEInputCheckTriggered(AEVK_R))
+	//	{
+	//		gGameStateCurr = GS_RESTART;
+	//		scoreAlreadySubmitted = false;
+	//	}
 		return;
 	}
 
-	// =========================================================
-	// update according to input
-	// =========================================================
+	//// =========================================================
+	//// update according to input
+	//// =========================================================
 
-	// This input handling moves the ship without any velocity nor acceleration
-	// It should be changed when implementing the Asteroids project
+	//// This input handling moves the ship without any velocity nor acceleration
+	//// It should be changed when implementing the Asteroids project
+	////
+	//// Updating the velocity and position according to acceleration is 
+	//// done by using the following:
+	//// Pos1 = 1/2 * a*t*t + v0*t + Pos0
+	////
+	//// In our case we need to divide the previous equation into two parts in order 
+	//// to have control over the velocity and that is done by:
+	////
+	//// v1 = a*t + v0		//This is done when the UP or DOWN key is pressed 
+	//// Pos1 = v1*t + Pos0
 	//
-	// Updating the velocity and position according to acceleration is 
-	// done by using the following:
-	// Pos1 = 1/2 * a*t*t + v0*t + Pos0
-	//
-	// In our case we need to divide the previous equation into two parts in order 
-	// to have control over the velocity and that is done by:
-	//
-	// v1 = a*t + v0		//This is done when the UP or DOWN key is pressed 
-	// Pos1 = v1*t + Pos0
-	
-	if (AEInputCheckCurr(AEVK_UP))
-	{
-		AEVec2 added;
-		AEVec2Set(&added, cosf(spShip->dirCurr), sinf(spShip->dirCurr));
-		spShip->velCurr.x = SHIP_ACCEL_FORWARD * (f32)AEFrameRateControllerGetFrameTime() * added.x + spShip->velCurr.x;
-		spShip->velCurr.y = SHIP_ACCEL_FORWARD * (f32)AEFrameRateControllerGetFrameTime() * added.y + spShip->velCurr.y;
+	//if (AEInputCheckCurr(AEVK_UP))
+	//{
+	//	AEVec2 added;
+	//	AEVec2Set(&added, cosf(spShip->dirCurr), sinf(spShip->dirCurr));
+	//	spShip->velCurr.x = SHIP_ACCEL_FORWARD * (f32)AEFrameRateControllerGetFrameTime() * added.x + spShip->velCurr.x;
+	//	spShip->velCurr.y = SHIP_ACCEL_FORWARD * (f32)AEFrameRateControllerGetFrameTime() * added.y + spShip->velCurr.y;
 
-		float speed = AEVec2Length(&spShip->velCurr); // current "speed" in this frame
+	//	float speed = AEVec2Length(&spShip->velCurr); // current "speed" in this frame
 
-		if (speed > 0.0f) // only decelerate if speed is more than 0
-		{
-			// calculate deceleration
-			float deceleration = SHIP_DECCEL * (f32)AEFrameRateControllerGetFrameTime();
-			speed = max(0.0f, speed - deceleration); // ensure speed does not go below 0
+	//	if (speed > 0.0f) // only decelerate if speed is more than 0
+	//	{
+	//		// calculate deceleration
+	//		float deceleration = SHIP_DECCEL * (f32)AEFrameRateControllerGetFrameTime();
+	//		speed = max(0.0f, speed - deceleration); // ensure speed does not go below 0
 
-			// Limit the speed
-			speed = min(speed, SHIP_MAX_SPEED_FORWARD); // ensure speed does not go above the maximum
+	//		// Limit the speed
+	//		speed = min(speed, SHIP_MAX_SPEED_FORWARD); // ensure speed does not go above the maximum
 
-			// Normalize and update the velocity
-			AEVec2Scale(&spShip->velCurr, &spShip->velCurr, speed / AEVec2Length(&spShip->velCurr));
-		}
-	}
+	//		// Normalize and update the velocity
+	//		AEVec2Scale(&spShip->velCurr, &spShip->velCurr, speed / AEVec2Length(&spShip->velCurr));
+	//	}
+	//}
 
-	if (AEInputCheckCurr(AEVK_DOWN))
-	{
-		AEVec2 added;
-		AEVec2Set(&added, -cosf(spShip->dirCurr), -sinf(spShip->dirCurr));
-		spShip->velCurr.x = SHIP_ACCEL_BACKWARD * (f32)AEFrameRateControllerGetFrameTime() * added.x + spShip->velCurr.x;
-		spShip->velCurr.y = SHIP_ACCEL_BACKWARD * (f32)AEFrameRateControllerGetFrameTime() * added.y + spShip->velCurr.y;
+	//if (AEInputCheckCurr(AEVK_DOWN))
+	//{
+	//	AEVec2 added;
+	//	AEVec2Set(&added, -cosf(spShip->dirCurr), -sinf(spShip->dirCurr));
+	//	spShip->velCurr.x = SHIP_ACCEL_BACKWARD * (f32)AEFrameRateControllerGetFrameTime() * added.x + spShip->velCurr.x;
+	//	spShip->velCurr.y = SHIP_ACCEL_BACKWARD * (f32)AEFrameRateControllerGetFrameTime() * added.y + spShip->velCurr.y;
 
-		float speed = AEVec2Length(&spShip->velCurr); // current "speed" in this frame
+	//	float speed = AEVec2Length(&spShip->velCurr); // current "speed" in this frame
 
-		if (speed > 0.0f) // only decelerate if speed is more than 0
-		{
-			// calculate deceleration
-			float deceleration = SHIP_DECCEL * (f32)AEFrameRateControllerGetFrameTime();
-			speed = max(0.0f, speed - deceleration); // ensure speed does not go below 0
+	//	if (speed > 0.0f) // only decelerate if speed is more than 0
+	//	{
+	//		// calculate deceleration
+	//		float deceleration = SHIP_DECCEL * (f32)AEFrameRateControllerGetFrameTime();
+	//		speed = max(0.0f, speed - deceleration); // ensure speed does not go below 0
 
-			// Limit the speed
-			speed = min(speed, SHIP_MAX_SPEED_BACKWARD); // ensure speed does not go above the maximum
+	//		// Limit the speed
+	//		speed = min(speed, SHIP_MAX_SPEED_BACKWARD); // ensure speed does not go above the maximum
 
-			// Normalize and update the velocity
-			AEVec2Scale(&spShip->velCurr, &spShip->velCurr, speed / AEVec2Length(&spShip->velCurr));
-		}
-	}
+	//		// Normalize and update the velocity
+	//		AEVec2Scale(&spShip->velCurr, &spShip->velCurr, speed / AEVec2Length(&spShip->velCurr));
+	//	}
+	//}
 
-	if (AEInputCheckCurr(AEVK_LEFT))
-	{
-		spShip->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
-		spShip->dirCurr =  AEWrap(spShip->dirCurr, -PI, PI);
-	}
+	//if (AEInputCheckCurr(AEVK_LEFT))
+	//{
+	//	spShip->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
+	//	spShip->dirCurr =  AEWrap(spShip->dirCurr, -PI, PI);
+	//}
 
-	if (AEInputCheckCurr(AEVK_RIGHT))
-	{
-		spShip->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
-		spShip->dirCurr =  AEWrap(spShip->dirCurr, -PI, PI);
-	}
+	//if (AEInputCheckCurr(AEVK_RIGHT))
+	//{
+	//	spShip->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
+	//	spShip->dirCurr =  AEWrap(spShip->dirCurr, -PI, PI);
+	//}
 
-	// Shoot a bullet if space is triggered (Create a new object instance)
-	if (AEInputCheckTriggered(AEVK_SPACE))
-	{
-		// Get the bullet's direction according to the ship's direction
-		f32 dir = spShip->dirCurr;
-		AEVec2 pos = spShip->posCurr;
+	//// Shoot a bullet if space is triggered (Create a new object instance)
+	//if (AEInputCheckTriggered(AEVK_SPACE))
+	//{
+	//	// Get the bullet's direction according to the ship's direction
+	//	f32 dir = spShip->dirCurr;
+	//	AEVec2 pos = spShip->posCurr;
 
-		// Set the velocity
-		AEVec2 vel;
-		AEVec2Set(&vel, cosf(spShip->dirCurr), sinf(spShip->dirCurr));
-		AEVec2Scale(&vel, &vel, BULLET_SPEED);
+	//	// Set the velocity
+	//	AEVec2 vel;
+	//	AEVec2Set(&vel, cosf(spShip->dirCurr), sinf(spShip->dirCurr));
+	//	AEVec2Scale(&vel, &vel, BULLET_SPEED);
 
-		// Create an instance, based on BULLET_SCALE_X and BULLET_SCALE_Y
-		AEVec2 scale;
-		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-		gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, dir);
-	}
+	//	// Create an instance, based on BULLET_SCALE_X and BULLET_SCALE_Y
+	//	AEVec2 scale;
+	//	AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
+	//	gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, dir);
+	//}
 
 	// ======================================================================
 	// Save previous positions

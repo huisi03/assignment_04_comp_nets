@@ -413,7 +413,7 @@ void RetransmitPacket() {
 
         if (now - timer >= TIMEOUT_MS && accumulative_timers[seqNum] < TIMEOUT_MS_MAX) {
 
-            std::cout << "Timeout resending packet with sequence number: " << seqNum << std::endl;
+            //std::cout << "Timeout resending packet with sequence number: " << seqNum << std::endl;
 
             SendPacket(udpClientSocket, serverTargetAddress, sendBuffer[seqNum], true);
 
