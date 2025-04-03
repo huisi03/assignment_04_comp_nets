@@ -974,6 +974,38 @@ void GameStateAsteroidsDraw(void)
             AEGfxMeshDraw(obj->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
         }
 
+        // Collate scores onto the leaderboard
+        LoadLeaderboard();
+
+        // Get current time
+        char timeBuffer[20];
+        std::time_t currentTime = std::time(nullptr);
+        std::tm localTime;
+        localtime_s(&localTime, &currentTime);
+        std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
+
+        for (auto [id, score, lives] : gameDataState.playerData)
+        {
+            AddScoreToLeaderboard(id, "", score, timeBuffer);
+        }
+        SaveLeaderboard();
+
+        // Show leaderboard
+
+        ReceiveLeaderboard(udpClientSocket);
+        // Show leaderboard
+        char strBuffer[1024];
+        AEVec2 pos;
+        std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
+        int yOffset = -150; // starting position for leaderboard display
+        for (const auto& scoreEntry : topScores)
+        {
+            sprintf_s(strBuffer, "%s", scoreEntry.c_str());
+            AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
+            RenderText(pos, 24, strBuffer);
+            yOffset -= 60; // space between entries
+        }
+
     }
     else {
 
