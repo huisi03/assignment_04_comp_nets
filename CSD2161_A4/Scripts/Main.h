@@ -23,6 +23,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 extern float	g_dt;
 extern double	g_appTime;
 extern int		pFont; // this is for the font which is used to display the text. 
+extern bool clientRunning;
 
 // ---------------------------------------------------------------------------
 // includes
