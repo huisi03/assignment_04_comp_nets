@@ -711,7 +711,7 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
             ReceiveGameStateStart(udpClientSocket, clientData, receivedPacket);
             gGameStateNext = GS_ASTEROIDS;
 
-        } else if (receivedPacket.packetID == GAME_SEND_CLIENT_COUNT) {
+        } else if (receivedPacket.packetID == SEND_CLIENT_COUNT) {
 
             ReceiveClientCount(receivedPacket);
         }
@@ -734,7 +734,7 @@ void BroadcastClientCount(SOCKET socket, std::map<uint16_t, sockaddr_in>& client
         packet.sourcePortNumber = serverPort;           // Server's port
         packet.destinationPortNumber = portID;			// Client's port
         packet.flags = 0;
-        packet.packetID = GAME_SEND_CLIENT_COUNT;
+        packet.packetID = SEND_CLIENT_COUNT;
         std::memcpy(packet.data, (void*)&clientCountGlobal, sizeof(clientCountGlobal));
         SendPacket(socket, clientAddr, packet);
     }
@@ -743,7 +743,7 @@ void BroadcastClientCount(SOCKET socket, std::map<uint16_t, sockaddr_in>& client
 
 void ReceiveClientCount(NetworkPacket packet) {
 
-    if (packet.packetID == GAME_SEND_CLIENT_COUNT) {
+    if (packet.packetID == SEND_CLIENT_COUNT) {
         clientCountGlobal = *reinterpret_cast<uint8_t*>(packet.data);
     }
 }
