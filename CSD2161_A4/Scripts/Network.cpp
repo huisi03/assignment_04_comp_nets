@@ -552,7 +552,3 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 }
 
 
-void Render(NetworkGameState& gameState)
-{
-	UNREFERENCED_PARAMETER(gameState);
-}
