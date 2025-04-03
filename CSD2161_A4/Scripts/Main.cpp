@@ -122,7 +122,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                 if (clientCount == clientsRequired && clients.count(portID) == false)
                 {
                     // ignore request, lobby is full
-                    std::cout << " [Server] Ignoring join, server is full\n";
+                    std::cout << "[Server] Ignoring join, server is full\n";
                     continue;
                 }
 
@@ -130,7 +130,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 
                 isPlayerConnected[portID] = true;
                 lastHeardTime[portID] = GetTimeNow();
-                std::cout << " [Server] Client [" << portID << "] has joined.\n";
+                std::cout << "[Server] Client [" << portID << "] has joined.\n";
 
                 // Check if the client is in the map already
                 if (clients.count(packet.sourcePortNumber) == false)

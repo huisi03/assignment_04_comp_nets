@@ -566,6 +566,11 @@ void HandleClientInput(SOCKET serverUDPSocket, uint16_t clientPortID, std::map<u
 
 		if (activity > 0) // Data available
 		{
+            if (!isPlayerConnected[clientPortID]) {
+                std::cout << "[Server] Stopping client thread for " << clientPortID << "\n";
+                break; // so that thread function returns
+            }
+
 			sockaddr_in senderAddress{};
 			NetworkPacket gamePacket = ReceivePacket(serverUDPSocket, senderAddress);
 
@@ -678,6 +683,11 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 
 		for (auto& [portID, clientAddr] : clients)
 		{
+            if (!isPlayerConnected[portID]) {
+                // remove from clients
+                clients.erase(portID);
+            }
+
 			{
 				responsePacket.destinationPortNumber = portID;			// Client's port
 				SendPacket(socket, clientAddr, responsePacket);
