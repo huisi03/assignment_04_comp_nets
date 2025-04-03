@@ -81,7 +81,7 @@ void GameStateLobbyDraw() {
     AEGfxPrint((s8)pFont, strBuffer, pos.x - width / 2.f, pos.y - height / 2.f, 1.5f, 1, 1, 1, 1);
 
     // Centered "Connected Players"
-    sprintf_s(strBuffer, "Connected Players: %d", connectedClients);
+    sprintf_s(strBuffer, "Connected Players: %d", clientCountGlobal);
     pos = { 0.0f, 50.0f };
     pos = Utilities::Worldtoscreencoordinates(pos);
 

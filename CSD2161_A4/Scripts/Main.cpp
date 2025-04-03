@@ -115,6 +115,10 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
                     clients[packet.sourcePortNumber] = address;
                     ++clientCount;
 
+                    clientCountGlobal = clientCount;
+
+                    BroadcastClientCount(udpServerSocket, clients);
+
                     // Create the player data and store it with the port number as key
                     switch (clientCount)
                     {

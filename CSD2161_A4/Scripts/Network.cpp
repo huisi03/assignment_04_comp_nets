@@ -24,6 +24,7 @@ const std::string configFileRelativePath = "Resources/Configuration.txt";
 const std::string configFileServerIp = "serverIp";
 const std::string configFileServerPort = "serverUdpPort";
 
+uint8_t clientCountGlobal = 0;
 
 void AttachConsoleWindow()
 {
@@ -710,12 +711,42 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
             ReceiveGameStateStart(udpClientSocket, clientData, receivedPacket);
             gGameStateNext = GS_ASTEROIDS;
 
+        } else if (receivedPacket.packetID == GAME_SEND_CLIENT_COUNT) {
+
+            ReceiveClientCount(receivedPacket);
         }
+
 		std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
 
 }
 
+
+void BroadcastClientCount(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients) {
+
+    if (clientCountGlobal == 0) {
+        return;
+    }
+
+    for (auto& [portID, clientAddr] : clients)
+    {
+        NetworkPacket packet{};
+        packet.sourcePortNumber = serverPort;           // Server's port
+        packet.destinationPortNumber = portID;			// Client's port
+        packet.flags = 0;
+        packet.packetID = GAME_SEND_CLIENT_COUNT;
+        std::memcpy(packet.data, (void*)&clientCountGlobal, sizeof(uint8_t));
+        SendPacket(socket, clientAddr, packet);
+    }
+
+}
+
+void ReceiveClientCount(NetworkPacket packet) {
+
+    if (packet.packetID == GAME_SEND_CLIENT_COUNT) {
+        clientCountGlobal = *reinterpret_cast<uint8_t*>(packet.data);
+    }
+}
 
 void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 {

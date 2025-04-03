@@ -61,7 +61,7 @@ enum PacketID
     GAME_INPUT = 0x25,
     GAME_STATE_START = 0x26,
     GAME_STATE_UPDATE = 0x27,
-    GAME_ENTER_LOBBY = 0x28,
+    GAME_SEND_CLIENT_COUNT = 0x28,
     LEADERBOARD = 0x29
 };
 
@@ -116,6 +116,8 @@ extern std::set<uint32_t> ackedPackets;                            // Tracks rec
 extern std::map<uint32_t, NetworkPacket> recvBuffer;               // Stores received packets
 extern std::map<uint32_t, uint64_t> timers;                        // Timeout tracking for packets waiting to be ACK-ed
 
+extern uint8_t clientCountGlobal;
+
 void AttachConsoleWindow();
 void FreeConsoleWindow();
 
@@ -152,6 +154,9 @@ void ReceiveGameStateStart(SOCKET socket, PlayerData& player, NetworkPacket pack
 
 void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
 void ListenForUpdates(SOCKET udpSocket, sockaddr_in serverAddr, PlayerData& clientData);
+
+void BroadcastClientCount(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients);
+void ReceiveClientCount(NetworkPacket packet);
 
 // LEADERBOARD
 void PackLeaderboardData(NetworkPacket& packet);
