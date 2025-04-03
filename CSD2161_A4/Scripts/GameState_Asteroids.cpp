@@ -960,7 +960,7 @@ void GameStateAsteroidsDraw(void)
 
         AEVec2 pos;
 
-        sprintf_s(strBuffer, "Score: %d", sScore);
+        sprintf_s(strBuffer, "Score: %d", gameDataState.playerData->score);
         AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
         RenderText(pos, 36, strBuffer);
 
