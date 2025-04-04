@@ -515,7 +515,7 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 				}
 			}
 
-			break;
+			//break;
         }
 	}
 }
@@ -542,12 +542,12 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 						}
 					}
 				}
-			}            
+			}
         } 
 		else if (receivedPacket.packetID == PacketID::LEADERBOARD)
         {
             UnpackLeaderboardData(receivedPacket);
-			std::cout << "Received Leaderboard" << std::endl;
+			//std::cout << "Received Leaderboard" << std::endl;
         }
 		//std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
