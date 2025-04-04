@@ -1057,16 +1057,64 @@ void GameStateAsteroidsDraw(void)
             AEGfxMeshDraw(pInst->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
         }
 
+        //You can replace this condition/variable by your own data.
+        //The idea is to display any of these variables/strings whenever a change in their value happens
+        static bool onValueChange = true;
+
+        // cache score and lives
+        static unsigned long scoreCache;
+        static long shipLivesCache;
+
+        // check and update if value for score or lives changed
+        onValueChange = (scoreCache != sScore || shipLivesCache != sShipLives);
+
         // Renders text in game
         AEVec2 pos;
 
-        sprintf_s(strBuffer, "Score: %d", sScore);
-        AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
-        RenderText(pos, 36, strBuffer);
+        // Check if we have a new high score
+        if (sScore > High_Score)
+        {
+            High_Score = sScore;
+            SaveHighScore(High_Score); // Save the new high score to the text file
+            printf("New High Score: %lu\n", High_Score);  // Print it in console 
+        }
 
-        sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
-        AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
-        RenderText(pos, 36, strBuffer);
+        if (sShipLives < 0)
+        {
+            // Get current time
+            char timeBuffer[20];
+            std::time_t currentTime = std::time(nullptr);
+            std::tm localTime;
+            localtime_s(&localTime, &currentTime);
+            std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
+
+            for (auto [id, score, lives] : gameDataState.playerData)
+            {
+                AddScoreToLeaderboard(id, "", score, timeBuffer);
+            }
+            SaveLeaderboard();
+
+            std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
+            int yOffset = -150; // starting position for leaderboard display
+            for (const auto& scoreEntry : topScores)
+            {
+                sprintf_s(strBuffer, "%s", scoreEntry.c_str());
+                AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
+                RenderText(pos, 24, strBuffer);
+                yOffset -= 60; // space between entries
+            }
+        }
+
+        else
+        {
+            sprintf_s(strBuffer, "Score: %d", sScore);
+            AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
+            RenderText(pos, 36, strBuffer);
+
+            sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
+            AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
+            RenderText(pos, 36, strBuffer);
+        }
         
     }
 }
