@@ -480,15 +480,6 @@ void GameStateAsteroidsUpdate(void)
 
                 gameObjInstDestroy(ships_multiplayer[obj.identifier]);
 
-                
-                for (auto& [a, b] : playerDataMap)
-                {
-                    if (a == obj.identifier && b.stats.lives <=0)
-                    {
-                        continue;
-                    }
-                }
-
                 if (obj.identifier == GetClientPort()) 
                     ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_MY_SHIP, &scale, nullptr, nullptr, 0.0f);
                 else 

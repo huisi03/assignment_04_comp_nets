@@ -385,14 +385,6 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 	std::lock_guard<std::mutex> lock(playerDataMutex);
 	PlayerInput& playerInput = playerInputMap[clientPortID];
 
-	for (auto& [a, b] : playerDataMap)
-	{
-		if (a == clientPortID && b.stats.lives <= 0)
-		{
-			return;
-		}
-	}
-
 	if (packet.packetID == InputKey::NONE)
 	{
 		//playersData[clientPortID].transform.velocity = { 0, 0 };
@@ -570,59 +562,68 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 		{
 			PlayerInput& input = playerInputMap[portID];
 
-			// rotate
-			float rotationSpeed = 3.0f; // radians/sec
-			if (input.leftKey)
-				playerData.transform.rotation += rotationSpeed * deltaTime;
-			if (input.rightKey)
-				playerData.transform.rotation -= rotationSpeed * deltaTime;
-
-			// front back
-			float thrustSpeed = 200.0f;
-			AEVec2 forward{ cosf(playerData.transform.rotation), sinf(playerData.transform.rotation) };
-
-			if (input.upKey)
-				playerData.transform.velocity += forward * thrustSpeed * deltaTime;
-			if (input.downKey)
-				playerData.transform.velocity -= forward * thrustSpeed * deltaTime;
-
-			// Update position using velocity
-			playerData.transform.position += playerData.transform.velocity * deltaTime;
-
-			// Wrap the ship from one end of the screen to the other
-			playerData.transform.position.x = AEWrap(playerData.transform.position.x, -400 - playerData.transform.scale.x,
-				400 + playerData.transform.scale.x);
-			playerData.transform.position.y = AEWrap(playerData.transform.position.y, -300 - playerData.transform.scale.y,
-				300 + playerData.transform.scale.y);
-
-			// space key
-			if (input.spaceKey)
+			// player is dead
+			if (playerData.stats.lives <= 0)
 			{
-				if (!playerData.spaceKeyTriggered)
-				{
-					NetworkTransform bullet{};
-					bullet.position = playerData.transform.position;
-					bullet.rotation = playerData.transform.rotation;
-					bullet.velocity = forward * 400.0f; // bullet speed
-					bullet.scale = { 5.0f, 5.0f };
-
-					for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
-					{
-						if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
-						{
-							gameDataState.objects[x].identifier = portID;
-							gameDataState.objects[x].transform = bullet;
-							gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
-							break;
-						}
-					}
-
-					playerData.spaceKeyTriggered = true;
-				}
+				// hide player
+				playerData.transform.position = { 10000 , 10000 };
 			}
 			else
 			{
-				playerData.spaceKeyTriggered = false;
+				// rotate
+				float rotationSpeed = 3.0f; // radians/sec
+				if (input.leftKey)
+					playerData.transform.rotation += rotationSpeed * deltaTime;
+				if (input.rightKey)
+					playerData.transform.rotation -= rotationSpeed * deltaTime;
+
+				// front back
+				float thrustSpeed = 200.0f;
+				AEVec2 forward{ cosf(playerData.transform.rotation), sinf(playerData.transform.rotation) };
+
+				if (input.upKey)
+					playerData.transform.velocity += forward * thrustSpeed * deltaTime;
+				if (input.downKey)
+					playerData.transform.velocity -= forward * thrustSpeed * deltaTime;
+
+				// Update position using velocity
+				playerData.transform.position += playerData.transform.velocity * deltaTime;
+
+				// Wrap the ship from one end of the screen to the other
+				playerData.transform.position.x = AEWrap(playerData.transform.position.x, -400 - playerData.transform.scale.x,
+					400 + playerData.transform.scale.x);
+				playerData.transform.position.y = AEWrap(playerData.transform.position.y, -300 - playerData.transform.scale.y,
+					300 + playerData.transform.scale.y);
+
+				// space key
+				if (input.spaceKey)
+				{
+					if (!playerData.spaceKeyTriggered)
+					{
+						NetworkTransform bullet{};
+						bullet.position = playerData.transform.position;
+						bullet.rotation = playerData.transform.rotation;
+						bullet.velocity = forward * 400.0f; // bullet speed
+						bullet.scale = { 5.0f, 5.0f };
+
+						for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
+						{
+							if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+							{
+								gameDataState.objects[x].identifier = portID;
+								gameDataState.objects[x].transform = bullet;
+								gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
+								break;
+							}
+						}
+
+						playerData.spaceKeyTriggered = true;
+					}
+				}
+				else
+				{
+					playerData.spaceKeyTriggered = false;
+				}
 			}
 
 			// Update game state (ship transform & stats)
