@@ -973,7 +973,7 @@ void GameStateAsteroidsDraw(void)
             else
                 sprintf_s(strBuffer, "Player (%d): %lu", npd.identifier, static_cast<unsigned long>(npd.score));
 
-            AEVec2Set(&pos, -SCREEN_SIZE_X + 50, SCREEN_SIZE_Y - yOffset);
+            AEVec2Set(&pos, -SCREEN_SIZE_X + 500, SCREEN_SIZE_Y - yOffset);
             RenderText(pos, 24, strBuffer);
             yOffset += 40;
         }
