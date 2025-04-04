@@ -69,7 +69,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::map<uint16_t, sockaddr_in> clients;
 		std::unordered_map<uint16_t, std::thread> clientThreads;
 
-		int clientsRequired = 4;
+		int clientsRequired = 2;
 		int clientCount = 0;
 
 		bool gameStarted = false; // Add a flag
@@ -160,9 +160,16 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 					for (auto& [port, data] : playerDataMap)
 					{
 						static int i = 0;
+
+						// Set up game objects
 						gameDataState.objects[i].transform.position = data.transform.position;
-						gameDataState.objects[i].type = (int) ObjectType::OBJ_SHIP;
+						gameDataState.objects[i].type = (int)ObjectType::OBJ_SHIP;
 						gameDataState.objects[i].identifier = port;
+
+						// Set up game stats
+						data.stats.identifier = port; 
+						gameDataState.playerData[i] = data.stats;
+                        
 						++i;
 					}
 

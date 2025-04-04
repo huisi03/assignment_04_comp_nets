@@ -962,9 +962,23 @@ void GameStateAsteroidsDraw(void)
 
         AEVec2 pos;
 
-        sprintf_s(strBuffer, "Score: %d", gameDataState.playerData->score);
-        AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
-        RenderText(pos, 36, strBuffer);
+        // Draw all players' scores
+        int yOffset = 100; // starting y position
+        for (int i = 0; i < static_cast<int>(gameDataState.playerCount); ++i)
+        {
+            const NetworkPlayerData& npd = gameDataState.playerData[i]; // correct type
+
+            if (npd.identifier == GetClientPort())
+                sprintf_s(strBuffer, "Player (%d): %lu (YOU)", npd.identifier, static_cast<unsigned long>(npd.score));
+            else
+                sprintf_s(strBuffer, "Player (%d): %lu", npd.identifier, static_cast<unsigned long>(npd.score));
+
+            AEVec2Set(&pos, -SCREEN_SIZE_X + 500, SCREEN_SIZE_Y - yOffset);
+            RenderText(pos, 24, strBuffer);
+            yOffset += 40;
+        }
+
+
 
         sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
         AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);

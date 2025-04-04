@@ -611,25 +611,21 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 				bullet.rotation = playerData.transform.rotation;
 				bullet.velocity = forward * 400.0f; // bullet speed
 				bullet.scale = { 5.0f, 5.0f };
-				
+
 				for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
 				{
 					if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
 					{
-						//playerBulletMap[portID].push_back(bullet);
-						gameDataState.objects[x].identifier = clientPort;
+						gameDataState.objects[x].identifier = portID; 
 						gameDataState.objects[x].transform = bullet;
 						gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
 						break;
 					}
 				}
-				//gameDataState.objects[gameDataState.objectCount].identifier = serverPort;
-				//gameDataState.objects[gameDataState.objectCount].transform = bullet;
-				//gameDataState.objects[gameDataState.objectCount].type = (int)ObjectType::OBJ_BULLET;
-				//++gameDataState.objectCount;
 
-				input.spaceKey = false; // Prevent continuous firing
+				input.spaceKey = false;
 			}
+
 
 			// Update game state (ship transform & stats)
 			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
@@ -727,6 +723,11 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 							if (gameDataState.playerData[p].identifier == bulletOwnerID)
 							{
 								gameDataState.playerData[p].score += 100;
+								if (playerDataMap.count(bulletOwnerID))
+								{
+									playerDataMap[bulletOwnerID].stats.score = gameDataState.playerData[p].score;
+								}
+
 								break;
 							}
 						}
