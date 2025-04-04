@@ -90,6 +90,7 @@ enum TYPE
     TYPE_ASTEROID,
     TYPE_WALL,
 
+    TYPE_MY_SHIP,
     TYPE_NUM
 };
 
@@ -287,7 +288,6 @@ void GameStateAsteroidsLoad(void)
     pObj->pMesh = AEGfxMeshEnd();
     AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
 
-
     // =======================
     // create the bullet shape
     // =======================
@@ -347,6 +347,23 @@ void GameStateAsteroidsLoad(void)
 
     pObj->pMesh = AEGfxMeshEnd();
     AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
+
+    // =========================
+    // For the main player
+    // =========================
+
+    pObj = sGameObjList + sGameObjNum++;
+    pObj->type = TYPE_MY_SHIP;
+
+    AEGfxMeshStart();
+    AEGfxTriAdd(
+        -0.5f, 0.5f, 0xFF00FF00, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0xFF00FF00, 0.0f, 0.0f,
+        0.5f, 0.0f, 0xFF00FF00, 0.0f, 0.0f);
+
+    pObj->pMesh = AEGfxMeshEnd();
+    AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
+
 }
 
 /******************************************************************************/
@@ -365,8 +382,15 @@ void GameStateAsteroidsInit(void)
 
                 AEVec2 scale;
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
-                ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
-
+                
+                if (obj.identifier == GetClientPort())
+                {
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_MY_SHIP, &scale, nullptr, nullptr, 0.0f);
+                }
+                else
+                {
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+                }
             } else if (obj.type == (int)ObjectType::OBJ_ASTEROID) {
                 AEVec2 scale;
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
@@ -455,8 +479,11 @@ void GameStateAsteroidsUpdate(void)
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
                 gameObjInstDestroy(ships_multiplayer[obj.identifier]);
 
-                ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
-
+                if (obj.identifier == GetClientPort()) 
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_MY_SHIP, &scale, nullptr, nullptr, 0.0f);
+                else 
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+                
                 AEMtx33 trans, rot, scale_mat;
 
                 // Compute the scaling matrix
