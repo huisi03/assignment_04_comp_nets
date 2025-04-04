@@ -706,9 +706,9 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 							if (gameDataState.playerData[p].identifier == bulletOwnerID)
 							{
 								gameDataState.playerData[p].score += 100;
-								if (playerDataMap.count(bulletOwnerID))
+								if (playerDataMap.count((unsigned short)bulletOwnerID))
 								{
-									playerDataMap[bulletOwnerID].stats.score = gameDataState.playerData[p].score;
+									playerDataMap[(unsigned short)bulletOwnerID].stats.score = gameDataState.playerData[p].score;
 								}
 
 								break;
