@@ -1007,7 +1007,7 @@ void GameStateAsteroidsDraw(void)
 
 
 
-        sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
+        sprintf_s(strBuffer, "Ship Left: %d", clientData.stats.lives >= 0 ? clientData.stats.lives : 0);
         AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
         RenderText(pos, 36, strBuffer);
     }

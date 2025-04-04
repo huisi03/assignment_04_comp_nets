@@ -763,8 +763,12 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 							if (gameDataState.playerData[p].identifier == other.identifier)
 							{
 								gameDataState.playerData[p] = ship.stats;
+
+								playerDataMap[other.identifier].stats = ship.stats;
+								break;
 							}
 						}
+
 
 						// Destroy asteroid
 						//asteroid.type = (int)ObjectType::OBJ_NULL;
