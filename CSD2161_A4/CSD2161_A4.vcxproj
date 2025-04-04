@@ -25,6 +25,7 @@
     <ClCompile Include="Scripts\GameState_Asteroids.cpp" />
     <ClCompile Include="Scripts\GameState_MainMenu.cpp" />
     <ClCompile Include="Scripts\Math.cpp" />
+    <ClCompile Include="Scripts\NameGenerator.cpp" />
     <ClCompile Include="Scripts\Network.cpp" />
     <ClCompile Include="Scripts\Main.cpp" />
     <ClCompile Include="Scripts\NetworkGameState.cpp" />
@@ -38,6 +39,7 @@
     <ClInclude Include="Scripts\GameState_Asteroids.h" />
     <ClInclude Include="Scripts\GameState_MainMenu.h" />
     <ClInclude Include="Scripts\Math.h" />
+    <ClInclude Include="Scripts\NameGenerator.h" />
     <ClInclude Include="Scripts\Network.h" />
     <ClInclude Include="Scripts\Main.h" />
     <ClInclude Include="Scripts\NetworkGameState.h" />
