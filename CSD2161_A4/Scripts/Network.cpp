@@ -474,8 +474,7 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
             float timeElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start).count();;
             currentDurationLeftSeconds = GAME_TIMER_SECONDS - timeElapsed;
             gameDataState.gameTimer = currentDurationLeftSeconds;
-        }
-        else {
+        } else {
             break;
         }
 
@@ -507,6 +506,9 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 					}
 				}
 			}            
+        } else if (receivedPacket.packetID == PacketID::LEADERBOARD)
+        {
+            UnpackLeaderboardData(receivedPacket);
         }
 		//std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
