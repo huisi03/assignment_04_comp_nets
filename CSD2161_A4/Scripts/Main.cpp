@@ -160,13 +160,15 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 					for (auto& [port, data] : playerDataMap)
 					{
 						static int i = 0;
+
+						// Set up game objects
 						gameDataState.objects[i].transform.position = data.transform.position;
-						gameDataState.objects[i].type = (int) ObjectType::OBJ_SHIP;
+						gameDataState.objects[i].type = (int)ObjectType::OBJ_SHIP;
 						gameDataState.objects[i].identifier = port;
 
-                        gameDataState.playerData[i].identifier = port;
-                        gameDataState.playerData[i].lives = 3;
-                        gameDataState.playerData[i].score = 0;
+						// Set up game stats
+						data.stats.identifier = port; 
+						gameDataState.playerData[i] = data.stats;
                         
 						++i;
 					}
