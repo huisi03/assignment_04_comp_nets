@@ -1088,9 +1088,9 @@ void GameStateAsteroidsDraw(void)
             localtime_s(&localTime, &currentTime);
             std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
 
-            for (auto [id, score, lives] : gameDataState.playerData)
+            for (auto [id, score, lives, name] : gameDataState.playerData)
             {
-                AddScoreToLeaderboard(id, "", score, timeBuffer);
+                AddScoreToLeaderboard(id, name, score, timeBuffer);
             }
             SaveLeaderboard();
 
