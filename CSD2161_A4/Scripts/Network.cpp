@@ -470,17 +470,36 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 		}
 
         // update game timer
-        if (currentDurationLeftSeconds > 0) {
+        if (currentDurationLeftSeconds > 0) 
+		{
             float timeElapsed = (float)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start).count();;
             currentDurationLeftSeconds = GAME_TIMER_SECONDS - timeElapsed;
             gameDataState.gameTimer = (uint64_t)currentDurationLeftSeconds;
-        } else {
+        } 
+		else 
+		{
             break;
         }
 
 	}
 
-    BroadcastLeaderboard(serverPort, clients);
+	LoadLeaderboard();
+
+	auto now = std::chrono::system_clock::now();
+	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+	std::tm buf{};
+	localtime_s(&buf, &in_time_t);
+	std::ostringstream oss;
+	oss << std::put_time(&buf, "%Y-%m-%d %H:%M:%S");
+
+	for (auto& [portID, data] : playerDataMap)
+	{
+		AddScoreToLeaderboard(portID, data.stats.name, data.stats.score, oss.str().c_str());
+		std::cout << portID << '|' << data.stats.name << '|' << data.stats.score << '|' << oss.str().c_str() << std::endl;
+	}
+
+	SaveLeaderboard();
+    BroadcastLeaderboard(serverPort, std::ref(clients));
 }
 
 // Thread function to receive packets continuously
@@ -506,9 +525,11 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 					}
 				}
 			}            
-        } else if (receivedPacket.packetID == PacketID::LEADERBOARD)
+        } 
+		else if (receivedPacket.packetID == PacketID::LEADERBOARD)
         {
             UnpackLeaderboardData(receivedPacket);
+			std::cout << "Received Leaderboard" << std::endl;
         }
 		//std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
@@ -528,7 +549,7 @@ void UnpackLeaderboardData(const NetworkPacket& packet)
 {
 	std::lock_guard<std::mutex> lock1(packetMutex);
 	std::lock_guard<std::mutex> lock2(gameDataMutex);
-	memcpy(&gameDataState, packet.data, sizeof(NetworkLeaderboard)); // Copy buffer back into struct
+	memcpy(&leaderboard, packet.data, sizeof(NetworkLeaderboard)); // Copy buffer back into struct
 }
 
 void BroadcastLeaderboard(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
