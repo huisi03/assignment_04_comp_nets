@@ -450,6 +450,7 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
     auto start = std::chrono::system_clock::now();
     float currentDurationLeftSeconds = GAME_TIMER_SECONDS;
 
+	static bool sendLeaderboard = false;
 	while (true)
 	{
 		//Sleep(16); // Approx 60 updates per second (1000ms / 60)
@@ -478,28 +479,45 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
         } 
 		else 
 		{
-            break;
+			if (sendLeaderboard == false)
+			{
+				LoadLeaderboard();
+
+				auto now = std::chrono::system_clock::now();
+				auto in_time_t = std::chrono::system_clock::to_time_t(now);
+				std::tm buf{};
+				localtime_s(&buf, &in_time_t);
+				std::ostringstream oss;
+				oss << std::put_time(&buf, "%Y-%m-%d %H:%M:%S");
+
+				for (auto& [portID, data] : playerDataMap)
+				{
+					AddScoreToLeaderboard(portID, data.stats.name, data.stats.score, oss.str().c_str());
+					std::cout << portID << '|' << data.stats.name << '|' << data.stats.score << '|' << oss.str().c_str() << std::endl;
+				}
+
+				SaveLeaderboard();
+
+				sendLeaderboard = true;
+			}
+
+			NetworkPacket responsePacket2;
+			responsePacket2.packetID = PacketID::LEADERBOARD;
+			responsePacket2.sourcePortNumber = serverPort;					// Server's port
+
+			PackLeaderboardData(responsePacket2);
+
+			for (auto& [portID, clientAddr] : clients)
+			{
+				{
+					responsePacket2.destinationPortNumber = portID;			// Client's port
+					SendPacket(socket, clientAddr, responsePacket2);
+				}
+			}
+
+			break;
         }
-
 	}
-
-	LoadLeaderboard();
-
-	auto now = std::chrono::system_clock::now();
-	auto in_time_t = std::chrono::system_clock::to_time_t(now);
-	std::tm buf{};
-	localtime_s(&buf, &in_time_t);
-	std::ostringstream oss;
-	oss << std::put_time(&buf, "%Y-%m-%d %H:%M:%S");
-
-	for (auto& [portID, data] : playerDataMap)
-	{
-		AddScoreToLeaderboard(portID, data.stats.name, data.stats.score, oss.str().c_str());
-		std::cout << portID << '|' << data.stats.name << '|' << data.stats.score << '|' << oss.str().c_str() << std::endl;
-	}
-
-	SaveLeaderboard();
-    BroadcastLeaderboard(serverPort, std::ref(clients));
 }
 
 // Thread function to receive packets continuously

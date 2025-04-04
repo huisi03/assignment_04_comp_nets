@@ -1088,10 +1088,7 @@ void GameStateAsteroidsDraw(void)
             localtime_s(&localTime, &currentTime);
             std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
 
-            for (auto [id, score, lives, name] : gameDataState.playerData)
-            {
-                AddScoreToLeaderboard(id, name, score, timeBuffer);
-            }
+            AddScoreToLeaderboard(0, "LOCAL", High_Score, timeBuffer);
             SaveLeaderboard();
 
             std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
