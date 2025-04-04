@@ -587,28 +587,34 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 				300 + playerData.transform.scale.y);
 
 			// space key
-			if (input.spaceKey == true)
+			if (input.spaceKey)
 			{
-				NetworkTransform bullet{};
-				bullet.position = playerData.transform.position;
-				bullet.rotation = playerData.transform.rotation;
-				bullet.velocity = forward * 400.0f; // bullet speed
-				bullet.scale = { 5.0f, 5.0f };
-
-				for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
+				if (!playerData.spaceKeyTriggered)
 				{
-					if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+					NetworkTransform bullet{};
+					bullet.position = playerData.transform.position;
+					bullet.rotation = playerData.transform.rotation;
+					bullet.velocity = forward * 400.0f; // bullet speed
+					bullet.scale = { 5.0f, 5.0f };
+
+					for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
 					{
-						gameDataState.objects[x].identifier = portID; 
-						gameDataState.objects[x].transform = bullet;
-						gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
-						break;
+						if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+						{
+							gameDataState.objects[x].identifier = portID;
+							gameDataState.objects[x].transform = bullet;
+							gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
+							break;
+						}
 					}
+
+					playerData.spaceKeyTriggered = true;
 				}
-
-				input.spaceKey = false;
 			}
-
+			else
+			{
+				playerData.spaceKeyTriggered = false;
+			}
 
 			// Update game state (ship transform & stats)
 			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)

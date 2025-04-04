@@ -252,16 +252,8 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 				packet.packetID |= InputKey::LEFT;
 			if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
 				packet.packetID |= InputKey::RIGHT;
-
-			if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && !spacePreviouslyPressed)
-			{
+			if (GetAsyncKeyState(VK_SPACE) & 0x8000)
 				packet.packetID |= InputKey::SPACE;
-				spacePreviouslyPressed = true;
-			}
-			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000) && spacePreviouslyPressed)
-			{
-				spacePreviouslyPressed = false;
-			}
 
 			packet.sourcePortNumber = GetClientPort();
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
