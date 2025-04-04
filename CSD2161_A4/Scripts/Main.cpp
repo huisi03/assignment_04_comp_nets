@@ -257,7 +257,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 				packet.packetID = InputKey::SPACE;
 				spacePreviouslyPressed = true;
 			}
-			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000))
+			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000) && spacePreviouslyPressed)
 			{
 				spacePreviouslyPressed = false;
 			}

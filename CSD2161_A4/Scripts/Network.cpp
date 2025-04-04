@@ -90,68 +90,51 @@ int StartServer()
 		return ERROR_CODE;
 	}
 
-	// Setup UDP hints
-	addrinfo udpHints{};
-	SecureZeroMemory(&udpHints, sizeof(udpHints));
-	udpHints.ai_family = AF_INET;        // IPv4
-	udpHints.ai_socktype = SOCK_DGRAM;   // Datagram (unreliable)
-	udpHints.ai_protocol = IPPROTO_UDP;  // UDP
-
-	char hostname[256];
-	if (gethostname(hostname, sizeof(hostname)) == SOCKET_ERROR)
-	{
-		std::cerr << "gethostname() failed. Error: " << WSAGetLastError() << std::endl;
-		WSACleanup();
-		return ERROR_CODE;
-	}
-
-	addrinfo* udpInfo = nullptr;
-	if (getaddrinfo(hostname, portString.c_str(), &udpHints, &udpInfo) != 0)
-	{
-		std::cerr << "getaddrinfo() failed. Error: " << WSAGetLastError() << std::endl;
-		WSACleanup();
-		return ERROR_CODE;
-	}
-
-	// Create a UDP socket
-	udpServerSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
+	// Create and bind UDP socket
+	udpServerSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (udpServerSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
-		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
 
-	// Create a sockaddr_in for binding
 	sockaddr_in bindAddress{};
 	bindAddress.sin_family = AF_INET;
 	bindAddress.sin_port = htons(serverPort);
-	bindAddress.sin_addr.s_addr = INADDR_ANY;
+	bindAddress.sin_addr.s_addr = INADDR_ANY; // Bind to all interfaces
 
 	if (bind(udpServerSocket, (sockaddr*)&bindAddress, sizeof(bindAddress)) == SOCKET_ERROR)
 	{
 		std::cerr << "bind() failed." << std::endl;
 		closesocket(udpServerSocket);
-		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
 
+	// Get outward-facing IP address (actual usable IP)
+	sockaddr_in fakeAddr{};
+	fakeAddr.sin_family = AF_INET;
+	fakeAddr.sin_port = htons(80); // arbitrary
+	inet_pton(AF_INET, "8.8.8.8", &fakeAddr.sin_addr); // Google's DNS
 
-	// Print server IP address and serverPort number
-	char serverIPAddress[DEFAULT_BUFLEN];
-	struct sockaddr_in* address = reinterpret_cast<struct sockaddr_in*> (udpInfo->ai_addr);
-	inet_ntop(AF_INET, &(address->sin_addr), serverIPAddress, INET_ADDRSTRLEN);
-	getnameinfo(udpInfo->ai_addr, static_cast <socklen_t>(udpInfo->ai_addrlen), serverIPAddress, sizeof(serverIPAddress), nullptr, 0, NI_NUMERICHOST);
+	SOCKET tempSock = socket(AF_INET, SOCK_DGRAM, 0);
+	connect(tempSock, (sockaddr*)&fakeAddr, sizeof(fakeAddr));
+
+	sockaddr_in localAddr{};
+	int addrLen = sizeof(localAddr);
+	getsockname(tempSock, (sockaddr*)&localAddr, &addrLen);
+
+	char localIP[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &localAddr.sin_addr, localIP, sizeof(localIP));
+
+	closesocket(tempSock); // Done with temporary socket
 
 	std::cout << std::endl;
 	std::cout << "Server has been established" << std::endl;
-	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
+	std::cout << "Server IP Address: " << localIP << std::endl;
 	std::cout << "Server UDP Port Number: " << serverPort << std::endl;
 	std::cout << std::endl;
-
-	freeaddrinfo(udpInfo);
 
 	return 0;
 }
