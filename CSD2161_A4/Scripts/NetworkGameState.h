@@ -62,6 +62,8 @@ struct NetworkPlayerData
 #define MAX_LEADERBOARD_SCORES	20	// Maximum number of scores allowed on the leaderboard
 #define LEADERBOARD_FILE_NAME	"Resources/Leaderboard.dat"	// File name for the leaderboard
 
+#define GAME_TIMER_SECONDS      30
+
 // Struct to represent a player's score and additional data for the leaderboard
 struct NetworkScore
 {
@@ -92,6 +94,8 @@ struct NetworkGameState
 
 	uint32_t objectCount{};
 	NetworkObject objects[MAX_NETWORK_OBJECTS];
+
+    uint64_t gameTimer;
 };
 #pragma pack()
 
