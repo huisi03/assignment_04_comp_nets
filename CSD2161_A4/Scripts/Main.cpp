@@ -69,7 +69,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		std::map<uint16_t, sockaddr_in> clients;
 		std::unordered_map<uint16_t, std::thread> clientThreads;
 
-		int clientsRequired = 2;
+		int clientsRequired = 4;
 		int clientCount = 0;
 
 		bool gameStarted = false; // Add a flag
@@ -173,7 +173,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 						++i;
 					}
 
-                    SpawnInitAsteroids(clientCount, 10);
+                    SpawnInitAsteroids(clientCount, 5);
 				}
 			}
 			else
