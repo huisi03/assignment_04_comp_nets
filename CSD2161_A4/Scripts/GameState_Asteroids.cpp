@@ -14,7 +14,7 @@ Reproduction or disclosure of this file or its contents without the
 prior written consent of DigiPen Institute of Technology is prohibited.
  */
  /******************************************************************************/
-#define _CRT_SECURE_NO_WARNINGS
+
 #include "Network.h"
 #include "Main.h"
 #include "GameState_Asteroids.h"
@@ -192,9 +192,10 @@ void				RenderImage(AEVec2 position, AEVec2 scale, AEGfxTexture* texture, AEGfxV
 std::string getCurrentTimeStamp() {
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
+    std::tm buf{};
+    localtime_s(&buf, &in_time_t);
     std::ostringstream oss;
-    oss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%S");
+    oss << std::put_time(&buf, "%Y-%m-%d %H:%M:%S");
     return oss.str();
 }
 
@@ -997,9 +998,9 @@ void GameStateAsteroidsDraw(void)
             const NetworkPlayerData& npd = gameDataState.playerData[i]; // correct type
 
             if (npd.identifier == GetClientPort())
-                sprintf_s(strBuffer, "Player (%d): %lu (YOU)", npd.identifier, static_cast<unsigned long>(npd.score));
+                sprintf_s(strBuffer, "%s (%d): %lu (YOU)", npd.name, npd.identifier, static_cast<unsigned long>(npd.score));
             else
-                sprintf_s(strBuffer, "Player (%d): %lu", npd.identifier, static_cast<unsigned long>(npd.score));
+                sprintf_s(strBuffer, "%s (%d): %lu", npd.name, npd.identifier, static_cast<unsigned long>(npd.score));
 
             AEVec2Set(&pos, -SCREEN_SIZE_X + 500, SCREEN_SIZE_Y - yOffset);
             RenderText(pos, 24, strBuffer);
@@ -1016,10 +1017,30 @@ void GameStateAsteroidsDraw(void)
         sprintf_s(strBuffer, "Time Left: %lld s", gameDataState.gameTimer >= 0 ? gameDataState.gameTimer : 0);
         AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 140);
         RenderText(pos, 36, strBuffer);
-    }
 
-    else {
 
+        // Check if we have a new high score
+        if (sScore > High_Score)
+        {
+            High_Score = sScore;
+            SaveHighScore(High_Score); // Save the new high score to the text file
+            printf("New High Score: %lu\n", High_Score);  // Print it in console 
+        }
+
+        if (gameDataState.gameTimer <= 0)
+        {
+            std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
+            int yOffsetLeaderboard = -150; // starting position for leaderboard display
+            for (const auto& scoreEntry : topScores)
+            {
+                sprintf_s(strBuffer, "%s", scoreEntry.c_str());
+                AEVec2Set(&pos, 0, static_cast<f32>(yOffsetLeaderboard));
+                RenderText(pos, 24, strBuffer);
+                yOffsetLeaderboard -= 60; // space between entries
+            }
+        }
+    } else 
+    {
         // draw all object instances in the list
         for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
         {
@@ -1067,27 +1088,11 @@ void GameStateAsteroidsDraw(void)
             localtime_s(&localTime, &currentTime);
             std::strftime(timeBuffer, 20, "%Y-%m-%d %H:%M:%S", &localTime);
 
-            for (auto [id, score, lives] : gameDataState.playerData)
+            for (auto [id, score, lives, name] : gameDataState.playerData)
             {
-                AddScoreToLeaderboard(id, "", score, timeBuffer);
+                AddScoreToLeaderboard(id, name, score, timeBuffer);
             }
             SaveLeaderboard();
-
-            ReceiveLeaderboard(udpClientSocket);
-
-            std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
-            int yOffset = -150; // starting position for leaderboard display
-            for (const auto& scoreEntry : topScores)
-            {
-                sprintf_s(strBuffer, "%s", scoreEntry.c_str());
-                AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
-                RenderText(pos, 24, strBuffer);
-                yOffset -= 60; // space between entries
-            }
-        }
-        else if(gameDataState.gameTimer <= 0) {
-
-            ReceiveLeaderboard(udpClientSocket);
 
             std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
             int yOffset = -150; // starting position for leaderboard display
@@ -1110,6 +1115,7 @@ void GameStateAsteroidsDraw(void)
             AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
             RenderText(pos, 36, strBuffer);
         }
+        
     }
 }
 

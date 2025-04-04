@@ -26,6 +26,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <sstream>					// std::osstream
 
 #include "GameObjects.h"			// enum list of game objects
+#include "NameGenerator.h"
 
 #pragma pack(1)
 // Struct to hold the transformation data of a networked object
@@ -51,10 +52,15 @@ struct NetworkObject
 // Struct to represent player data in the game
 struct NetworkPlayerData
 {
-	NetworkPlayerData() : identifier{}, score{}, lives{2} {}
+	NetworkPlayerData() : identifier{}, score{}, lives{3} 
+	{
+		std::string generated = RandomiseName();
+		std::snprintf(name, sizeof(name), "%s", generated.c_str());
+	}
 	uint32_t identifier;			// unique player id (Can use Port Number)
 	uint32_t score;					// player score
 	uint32_t lives;					// number of lives left
+	char name[4];
 };
 
 #define MAX_NAME_LENGTH			8	// Maximum length of a name
@@ -62,7 +68,7 @@ struct NetworkPlayerData
 #define MAX_LEADERBOARD_SCORES	20	// Maximum number of scores allowed on the leaderboard
 #define LEADERBOARD_FILE_NAME	"Resources/Leaderboard.dat"	// File name for the leaderboard
 
-#define GAME_TIMER_SECONDS      30
+#define GAME_TIMER_SECONDS      5
 
 // Struct to represent a player's score and additional data for the leaderboard
 struct NetworkScore
