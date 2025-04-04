@@ -384,6 +384,15 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 	// Note: Uncomment to test if the keys are working correctly
 	std::lock_guard<std::mutex> lock(playerDataMutex);
 	PlayerInput& playerInput = playerInputMap[clientPortID];
+
+	for (auto& [a, b] : playerDataMap)
+	{
+		if (a == clientPortID && b.stats.lives <= 0)
+		{
+			return;
+		}
+	}
+
 	if (packet.packetID == InputKey::NONE)
 	{
 		//playersData[clientPortID].transform.velocity = { 0, 0 };

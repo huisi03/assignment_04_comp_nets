@@ -453,7 +453,16 @@ void GameStateAsteroidsUpdate(void)
 
                 AEVec2 scale;
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+
                 gameObjInstDestroy(ships_multiplayer[obj.identifier]);
+
+                for (auto& [a, b] : playerDataMap)
+                {
+                    if (a == obj.identifier && b.stats.lives <=0)
+                    {
+                        continue;
+                    }
+                }
 
                 ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
 
