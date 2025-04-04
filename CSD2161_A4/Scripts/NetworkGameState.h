@@ -51,7 +51,7 @@ struct NetworkObject
 // Struct to represent player data in the game
 struct NetworkPlayerData
 {
-	NetworkPlayerData() : identifier{}, score{}, lives{2} {}
+	NetworkPlayerData() : identifier{}, score{}, lives{3} {}
 	uint32_t identifier;			// unique player id (Can use Port Number)
 	uint32_t score;					// player score
 	uint32_t lives;					// number of lives left
@@ -62,7 +62,7 @@ struct NetworkPlayerData
 #define MAX_LEADERBOARD_SCORES	20	// Maximum number of scores allowed on the leaderboard
 #define LEADERBOARD_FILE_NAME	"Resources/Leaderboard.dat"	// File name for the leaderboard
 
-#define GAME_TIMER_SECONDS      10
+#define GAME_TIMER_SECONDS      30
 
 // Struct to represent a player's score and additional data for the leaderboard
 struct NetworkScore

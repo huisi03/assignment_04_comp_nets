@@ -471,9 +471,9 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 
         // update game timer
         if (currentDurationLeftSeconds > 0) {
-            float timeElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start).count();;
+            float timeElapsed = (float)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start).count();;
             currentDurationLeftSeconds = GAME_TIMER_SECONDS - timeElapsed;
-            gameDataState.gameTimer = currentDurationLeftSeconds;
+            gameDataState.gameTimer = (uint64_t)currentDurationLeftSeconds;
         } else {
             break;
         }

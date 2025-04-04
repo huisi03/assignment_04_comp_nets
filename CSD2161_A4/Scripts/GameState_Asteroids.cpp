@@ -1030,13 +1030,13 @@ void GameStateAsteroidsDraw(void)
         {
 
             std::vector<std::string> topScores = GetTopPlayersFromLeaderboard(5);
-            int yOffset = -150; // starting position for leaderboard display
+            int yOffsetLeaderboard = -150; // starting position for leaderboard display
             for (const auto& scoreEntry : topScores)
             {
                 sprintf_s(strBuffer, "%s", scoreEntry.c_str());
-                AEVec2Set(&pos, 0, static_cast<f32>(yOffset));
+                AEVec2Set(&pos, 0, static_cast<f32>(yOffsetLeaderboard));
                 RenderText(pos, 24, strBuffer);
-                yOffset -= 60; // space between entries
+                yOffsetLeaderboard -= 60; // space between entries
             }
         }
     } else {
