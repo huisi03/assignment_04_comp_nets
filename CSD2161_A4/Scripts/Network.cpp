@@ -490,7 +490,7 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 	while (clientRunning)
 	{
 		NetworkPacket receivedPacket = ReceivePacket(socket, serverAddr);
-		if (receivedPacket.packetID == GAME_STATE_UPDATE || receivedPacket.packetID == LEADERBOARD)
+		if (receivedPacket.packetID == GAME_STATE_UPDATE)
 		{
 			UnpackGateStateData(receivedPacket);
 			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
