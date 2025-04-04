@@ -51,7 +51,7 @@ struct NetworkObject
 // Struct to represent player data in the game
 struct NetworkPlayerData
 {
-	NetworkPlayerData() : identifier{}, score{}, lives{} {}
+	NetworkPlayerData() : identifier{}, score{}, lives{2} {}
 	uint32_t identifier;			// unique player id (Can use Port Number)
 	uint32_t score;					// player score
 	uint32_t lives;					// number of lives left
