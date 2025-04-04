@@ -90,6 +90,7 @@ enum TYPE
     TYPE_ASTEROID,
     TYPE_WALL,
 
+    TYPE_MY_SHIP,
     TYPE_NUM
 };
 
@@ -163,7 +164,7 @@ const char* pFontURL = "Resources/Arial Italic.ttf";	// font url
 //s8							pFont;										// current font selected
 
 //ensures the leaderboard is updated only once when game over triggers.
-//after submission, the flag is set to true — so all future frames skip the submission.
+//after submission, the flag is set to true ï¿½ so all future frames skip the submission.
 //prevent from dulpicate saves
 static bool scoreAlreadySubmitted = false;
 
@@ -287,7 +288,6 @@ void GameStateAsteroidsLoad(void)
     pObj->pMesh = AEGfxMeshEnd();
     AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
 
-
     // =======================
     // create the bullet shape
     // =======================
@@ -347,6 +347,23 @@ void GameStateAsteroidsLoad(void)
 
     pObj->pMesh = AEGfxMeshEnd();
     AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
+
+    // =========================
+    // For the main player
+    // =========================
+
+    pObj = sGameObjList + sGameObjNum++;
+    pObj->type = TYPE_MY_SHIP;
+
+    AEGfxMeshStart();
+    AEGfxTriAdd(
+        -0.5f, 0.5f, 0xFF00FF00, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0xFF00FF00, 0.0f, 0.0f,
+        0.5f, 0.0f, 0xFF00FF00, 0.0f, 0.0f);
+
+    pObj->pMesh = AEGfxMeshEnd();
+    AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
+
 }
 
 /******************************************************************************/
@@ -365,8 +382,15 @@ void GameStateAsteroidsInit(void)
 
                 AEVec2 scale;
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
-                ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
-
+                
+                if (obj.identifier == GetClientPort())
+                {
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_MY_SHIP, &scale, nullptr, nullptr, 0.0f);
+                }
+                else
+                {
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+                }
             } else if (obj.type == (int)ObjectType::OBJ_ASTEROID) {
                 AEVec2 scale;
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
@@ -453,10 +477,14 @@ void GameStateAsteroidsUpdate(void)
 
                 AEVec2 scale;
                 AEVec2Set(&scale, obj.transform.scale.x, obj.transform.scale.y);
+
                 gameObjInstDestroy(ships_multiplayer[obj.identifier]);
 
-                ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
-
+                if (obj.identifier == GetClientPort()) 
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_MY_SHIP, &scale, nullptr, nullptr, 0.0f);
+                else 
+                    ships_multiplayer[obj.identifier] = gameObjInstCreate(TYPE_SHIP, &scale, nullptr, nullptr, 0.0f);
+                
                 AEMtx33 trans, rot, scale_mat;
 
                 // Compute the scaling matrix
@@ -980,7 +1008,7 @@ void GameStateAsteroidsDraw(void)
 
 
 
-        sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
+        sprintf_s(strBuffer, "Ship Left: %d", clientData.stats.lives >= 0 ? clientData.stats.lives : 0);
         AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
         RenderText(pos, 36, strBuffer);
 

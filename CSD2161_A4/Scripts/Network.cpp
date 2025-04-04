@@ -90,68 +90,51 @@ int StartServer()
 		return ERROR_CODE;
 	}
 
-	// Setup UDP hints
-	addrinfo udpHints{};
-	SecureZeroMemory(&udpHints, sizeof(udpHints));
-	udpHints.ai_family = AF_INET;        // IPv4
-	udpHints.ai_socktype = SOCK_DGRAM;   // Datagram (unreliable)
-	udpHints.ai_protocol = IPPROTO_UDP;  // UDP
-
-	char hostname[256];
-	if (gethostname(hostname, sizeof(hostname)) == SOCKET_ERROR)
-	{
-		std::cerr << "gethostname() failed. Error: " << WSAGetLastError() << std::endl;
-		WSACleanup();
-		return ERROR_CODE;
-	}
-
-	addrinfo* udpInfo = nullptr;
-	if (getaddrinfo(hostname, portString.c_str(), &udpHints, &udpInfo) != 0)
-	{
-		std::cerr << "getaddrinfo() failed. Error: " << WSAGetLastError() << std::endl;
-		WSACleanup();
-		return ERROR_CODE;
-	}
-
-	// Create a UDP socket
-	udpServerSocket = socket(udpInfo->ai_family, udpInfo->ai_socktype, udpInfo->ai_protocol);
+	// Create and bind UDP socket
+	udpServerSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (udpServerSocket == INVALID_SOCKET)
 	{
 		std::cerr << "socket() failed." << std::endl;
-		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
 
-	// Create a sockaddr_in for binding
 	sockaddr_in bindAddress{};
 	bindAddress.sin_family = AF_INET;
 	bindAddress.sin_port = htons(serverPort);
-	bindAddress.sin_addr.s_addr = INADDR_ANY;
+	bindAddress.sin_addr.s_addr = INADDR_ANY; // Bind to all interfaces
 
 	if (bind(udpServerSocket, (sockaddr*)&bindAddress, sizeof(bindAddress)) == SOCKET_ERROR)
 	{
 		std::cerr << "bind() failed." << std::endl;
 		closesocket(udpServerSocket);
-		freeaddrinfo(udpInfo);
 		WSACleanup();
 		return ERROR_CODE;
 	}
 
+	// Get outward-facing IP address (actual usable IP)
+	sockaddr_in fakeAddr{};
+	fakeAddr.sin_family = AF_INET;
+	fakeAddr.sin_port = htons(80); // arbitrary
+	inet_pton(AF_INET, "8.8.8.8", &fakeAddr.sin_addr); // Google's DNS
 
-	// Print server IP address and serverPort number
-	char serverIPAddress[DEFAULT_BUFLEN];
-	struct sockaddr_in* address = reinterpret_cast<struct sockaddr_in*> (udpInfo->ai_addr);
-	inet_ntop(AF_INET, &(address->sin_addr), serverIPAddress, INET_ADDRSTRLEN);
-	getnameinfo(udpInfo->ai_addr, static_cast <socklen_t>(udpInfo->ai_addrlen), serverIPAddress, sizeof(serverIPAddress), nullptr, 0, NI_NUMERICHOST);
+	SOCKET tempSock = socket(AF_INET, SOCK_DGRAM, 0);
+	connect(tempSock, (sockaddr*)&fakeAddr, sizeof(fakeAddr));
+
+	sockaddr_in localAddr{};
+	int addrLen = sizeof(localAddr);
+	getsockname(tempSock, (sockaddr*)&localAddr, &addrLen);
+
+	char localIP[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &localAddr.sin_addr, localIP, sizeof(localIP));
+
+	closesocket(tempSock); // Done with temporary socket
 
 	std::cout << std::endl;
 	std::cout << "Server has been established" << std::endl;
-	std::cout << "Server IP Address: " << serverIPAddress << std::endl;
+	std::cout << "Server IP Address: " << localIP << std::endl;
 	std::cout << "Server UDP Port Number: " << serverPort << std::endl;
 	std::cout << std::endl;
-
-	freeaddrinfo(udpInfo);
 
 	return 0;
 }
@@ -401,32 +384,38 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 	// Note: Uncomment to test if the keys are working correctly
 	std::lock_guard<std::mutex> lock(playerDataMutex);
 	PlayerInput& playerInput = playerInputMap[clientPortID];
+
 	if (packet.packetID == InputKey::NONE)
 	{
 		//playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
-	else if (packet.packetID == InputKey::UP)
+
+	if (packet.packetID & InputKey::UP)
 	{
 		//playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
-	else if (packet.packetID == InputKey::DOWN)
+
+	if (packet.packetID & InputKey::DOWN)
 	{
 		//playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
-	else if (packet.packetID == InputKey::RIGHT)
+
+	if (packet.packetID & InputKey::RIGHT)
 	{
 		//playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
-	else if (packet.packetID == InputKey::LEFT)
+
+	if (packet.packetID & InputKey::LEFT)
 	{
 		//playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
-	else if (packet.packetID == InputKey::SPACE)
+
+	if (packet.packetID & InputKey::SPACE)
 	{
 		playerInput.spaceKey = true;
 	}
@@ -582,60 +571,75 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 		float deltaTime = duration<float>(currTime - prevTime).count();
 		prevTime = currTime;
 
-		std::lock_guard<std::mutex> lock(gameDataMutex);
+		//std::lock_guard<std::mutex> lock(gameDataMutex);
 
 		for (auto& [portID, playerData] : playerDataMap)
 		{
 			PlayerInput& input = playerInputMap[portID];
 
-			// rotate
-			float rotationSpeed = 3.0f; // radians/sec
-			if (input.leftKey)
-				playerData.transform.rotation += rotationSpeed * deltaTime;
-			if (input.rightKey)
-				playerData.transform.rotation -= rotationSpeed * deltaTime;
-
-			// front back
-			float thrustSpeed = 200.0f;
-			AEVec2 forward{ cosf(playerData.transform.rotation), sinf(playerData.transform.rotation) };
-
-			if (input.upKey)
-				playerData.transform.velocity += forward * thrustSpeed * deltaTime;
-			if (input.downKey)
-				playerData.transform.velocity -= forward * thrustSpeed * deltaTime;
-
-			// Update position using velocity
-			playerData.transform.position += playerData.transform.velocity * deltaTime;
-
-			// Wrap the ship from one end of the screen to the other
-			playerData.transform.position.x = AEWrap(playerData.transform.position.x, -400 - playerData.transform.scale.x,
-				400 + playerData.transform.scale.x);
-			playerData.transform.position.y = AEWrap(playerData.transform.position.y, -300 - playerData.transform.scale.y,
-				300 + playerData.transform.scale.y);
-
-			// space key
-			if (input.spaceKey == true)
+			// player is dead
+			if (playerData.stats.lives <= 0)
 			{
-				NetworkTransform bullet{};
-				bullet.position = playerData.transform.position;
-				bullet.rotation = playerData.transform.rotation;
-				bullet.velocity = forward * 400.0f; // bullet speed
-				bullet.scale = { 5.0f, 5.0f };
+				// hide player
+				playerData.transform.position = { 10000 , 10000 };
+			}
+			else
+			{
+				// rotate
+				float rotationSpeed = 3.0f; // radians/sec
+				if (input.leftKey)
+					playerData.transform.rotation += rotationSpeed * deltaTime;
+				if (input.rightKey)
+					playerData.transform.rotation -= rotationSpeed * deltaTime;
 
-				for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
+				// front back
+				float thrustSpeed = 200.0f;
+				AEVec2 forward{ cosf(playerData.transform.rotation), sinf(playerData.transform.rotation) };
+
+				if (input.upKey)
+					playerData.transform.velocity += forward * thrustSpeed * deltaTime;
+				if (input.downKey)
+					playerData.transform.velocity -= forward * thrustSpeed * deltaTime;
+
+				// Update position using velocity
+				playerData.transform.position += playerData.transform.velocity * deltaTime;
+
+				// Wrap the ship from one end of the screen to the other
+				playerData.transform.position.x = AEWrap(playerData.transform.position.x, -400 - playerData.transform.scale.x,
+					400 + playerData.transform.scale.x);
+				playerData.transform.position.y = AEWrap(playerData.transform.position.y, -300 - playerData.transform.scale.y,
+					300 + playerData.transform.scale.y);
+
+				// space key
+				if (input.spaceKey)
 				{
-					if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+					if (!playerData.spaceKeyTriggered)
 					{
-						gameDataState.objects[x].identifier = portID; 
-						gameDataState.objects[x].transform = bullet;
-						gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
-						break;
+						NetworkTransform bullet{};
+						bullet.position = playerData.transform.position;
+						bullet.rotation = playerData.transform.rotation;
+						bullet.velocity = forward * 400.0f; // bullet speed
+						bullet.scale = { 5.0f, 5.0f };
+
+						for (int x = 0; x < MAX_NETWORK_OBJECTS; ++x)
+						{
+							if (gameDataState.objects[x].type == (int)ObjectType::OBJ_NULL)
+							{
+								gameDataState.objects[x].identifier = portID;
+								gameDataState.objects[x].transform = bullet;
+								gameDataState.objects[x].type = (int)ObjectType::OBJ_BULLET;
+								break;
+							}
+						}
+
+						playerData.spaceKeyTriggered = true;
 					}
 				}
-
-				input.spaceKey = false;
+				else
+				{
+					playerData.spaceKeyTriggered = false;
+				}
 			}
-
 
 			// Update game state (ship transform & stats)
 			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
@@ -733,9 +737,9 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 							if (gameDataState.playerData[p].identifier == bulletOwnerID)
 							{
 								gameDataState.playerData[p].score += 100;
-								if (playerDataMap.count(bulletOwnerID))
+								if (playerDataMap.count((unsigned short)bulletOwnerID))
 								{
-									playerDataMap[bulletOwnerID].stats.score = gameDataState.playerData[p].score;
+									playerDataMap[(unsigned short)bulletOwnerID].stats.score = gameDataState.playerData[p].score;
 								}
 
 								break;
@@ -784,8 +788,12 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 							if (gameDataState.playerData[p].identifier == other.identifier)
 							{
 								gameDataState.playerData[p] = ship.stats;
+
+								playerDataMap[other.identifier].stats = ship.stats;
+								break;
 							}
 						}
+
 
 						// Destroy asteroid
 						//asteroid.type = (int)ObjectType::OBJ_NULL;

@@ -154,7 +154,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 						}
 					}
 					// Setting the game state for all objects
-					gameDataState.playerCount = gameDataState.objectCount = clientCount;
+					gameDataState.playerCount /*= gameDataState.objectCount*/ = clientCount;
 
 					// Set the player as the object in the game state
 					for (auto& [port, data] : playerDataMap)
@@ -245,22 +245,15 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			static bool spacePreviouslyPressed = false;
 
 			if (GetAsyncKeyState(VK_UP) & 0x8000)
-				packet.packetID = InputKey::UP;
-			else if (GetAsyncKeyState(VK_DOWN) & 0x8000)
-				packet.packetID = InputKey::DOWN;
-			else if (GetAsyncKeyState(VK_LEFT) & 0x8000)
-				packet.packetID = InputKey::LEFT;
-			else if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
-				packet.packetID = InputKey::RIGHT;
-			else if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && !spacePreviouslyPressed)
-			{
-				packet.packetID = InputKey::SPACE;
-				spacePreviouslyPressed = true;
-			}
-			else if (!(GetAsyncKeyState(VK_SPACE) & 0x8000))
-			{
-				spacePreviouslyPressed = false;
-			}
+				packet.packetID |= InputKey::UP;
+			if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+				packet.packetID |= InputKey::DOWN;
+			if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+				packet.packetID |= InputKey::LEFT;
+			if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+				packet.packetID |= InputKey::RIGHT;
+			if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+				packet.packetID |= InputKey::SPACE;
 
 			packet.sourcePortNumber = GetClientPort();
 			packet.destinationPortNumber = serverTargetAddress.sin_port;
@@ -497,5 +490,5 @@ void SpawnInitAsteroids(int starting_index, int count) {
   
     }
 
-    gameDataState.objectCount += count;
+    //gameDataState.objectCount += count;
 }

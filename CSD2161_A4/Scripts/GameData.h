@@ -25,6 +25,7 @@ struct PlayerData
 		: transform{ pos, {0, 0}, 0.0f, scale }, stats{} {}
 	NetworkTransform transform;
 	NetworkPlayerData stats;
+	int spaceKeyTriggered;
 };
 
 // externs
