@@ -163,6 +163,11 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 						gameDataState.objects[i].transform.position = data.transform.position;
 						gameDataState.objects[i].type = (int) ObjectType::OBJ_SHIP;
 						gameDataState.objects[i].identifier = port;
+
+                        gameDataState.playerData[i].identifier = port;
+                        gameDataState.playerData[i].lives = 3;
+                        gameDataState.playerData[i].score = 0;
+                        
 						++i;
 					}
 
