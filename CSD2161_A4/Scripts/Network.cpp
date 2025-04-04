@@ -447,13 +447,16 @@ void ReceiveGameStateStart(SOCKET socket, PlayerData& player)
 
 void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 {
+    auto start = std::chrono::system_clock::now();
+    float currentDurationLeftSeconds = GAME_TIMER_SECONDS;
+
 	while (true)
 	{
 		//Sleep(16); // Approx 60 updates per second (1000ms / 60)
 
 		// 1. **Send the full game state to all clients**
 		NetworkPacket responsePacket;
-		responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
+        responsePacket.packetID = PacketID::GAME_STATE_UPDATE;
 		responsePacket.sourcePortNumber = serverPort;					// Server's port
 
 		PackGameStateData(responsePacket, gameDataState);
@@ -466,7 +469,19 @@ void BroadcastGameState(SOCKET socket, std::map<uint16_t, sockaddr_in>& clients)
 			}
 		}
 
+        // update game timer
+        if (currentDurationLeftSeconds > 0) {
+            float timeElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start).count();;
+            currentDurationLeftSeconds = GAME_TIMER_SECONDS - timeElapsed;
+            gameDataState.gameTimer = currentDurationLeftSeconds;
+        }
+        else {
+            break;
+        }
+
 	}
+
+    BroadcastLeaderboard(serverPort, clients);
 }
 
 // Thread function to receive packets continuously
@@ -475,12 +490,12 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 	while (clientRunning)
 	{
 		NetworkPacket receivedPacket = ReceivePacket(socket, serverAddr);
-		if (receivedPacket.packetID == GAME_STATE_UPDATE)
+		if (receivedPacket.packetID == GAME_STATE_UPDATE || receivedPacket.packetID == LEADERBOARD)
 		{
 			UnpackGateStateData(receivedPacket);
 			for (int i = 0; i < MAX_NETWORK_OBJECTS; ++i)
 			{
-				if (gameDataState.objects[i].type == 1 && gameDataState.objects[i].identifier == clientPort)
+				if (gameDataState.objects[i].type == (int)ObjectType::OBJ_SHIP && gameDataState.objects[i].identifier == clientPort)
 				{
 					player.transform = gameDataState.objects[i].transform;
 					for (int j = 0; j < static_cast<int>(gameDataState.playerCount); ++j)
@@ -491,8 +506,8 @@ void ListenForUpdates(SOCKET socket, sockaddr_in serverAddr, PlayerData& player)
 						}
 					}
 				}
-			}
-		}
+			}            
+        }
 		//std::cout << "Pos: " << player.transform.position.x << " " << player.transform.position.y << std::endl;
 	}
 

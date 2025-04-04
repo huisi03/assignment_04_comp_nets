@@ -1011,6 +1011,11 @@ void GameStateAsteroidsDraw(void)
         sprintf_s(strBuffer, "Ship Left: %d", clientData.stats.lives >= 0 ? clientData.stats.lives : 0);
         AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 75);
         RenderText(pos, 36, strBuffer);
+
+        std::memset(strBuffer, 0, 1024);
+        sprintf_s(strBuffer, "Time Left: %lld s", gameDataState.gameTimer >= 0 ? gameDataState.gameTimer : 0);
+        AEVec2Set(&pos, SCREEN_SIZE_X - 250, -SCREEN_SIZE_Y + 140);
+        RenderText(pos, 36, strBuffer);
     }
 
     else {
@@ -1079,6 +1084,10 @@ void GameStateAsteroidsDraw(void)
                 RenderText(pos, 24, strBuffer);
                 yOffset -= 60; // space between entries
             }
+        }
+        else if(gameDataState.gameTimer <= 0) {
+            ReceiveLeaderboard(udpClientSocket);
+
         }
 
         else
