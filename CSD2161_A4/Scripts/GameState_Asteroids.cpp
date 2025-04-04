@@ -969,7 +969,6 @@ void GameStateAsteroidsDraw(void)
                 sprintf_s(strBuffer, "Score: %d", gameDataState.playerData[i].score);
                 AEVec2Set(&pos, 0, SCREEN_SIZE_Y - 75);
                 RenderText(pos, 36, strBuffer);
-                break;
             }
         }
 
