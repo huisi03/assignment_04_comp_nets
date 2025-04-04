@@ -406,27 +406,32 @@ void HandlePlayerInput(uint16_t clientPortID, NetworkPacket& packet, std::map<ui
 		//playersData[clientPortID].transform.velocity = { 0, 0 };
 		playerInput.NoInput();
 	}
-	else if (packet.packetID == InputKey::UP)
+
+	if (packet.packetID & InputKey::UP)
 	{
 		//playersData[clientPortID].transform.position = { 10, 10 };
 		playerInput.upKey = true;
 	}
-	else if (packet.packetID == InputKey::DOWN)
+
+	if (packet.packetID & InputKey::DOWN)
 	{
 		//playersData[clientPortID].transform.position = { 20, 20 };
 		playerInput.downKey = true;
 	}
-	else if (packet.packetID == InputKey::RIGHT)
+
+	if (packet.packetID & InputKey::RIGHT)
 	{
 		//playersData[clientPortID].transform.position = { 30, 30 };
 		playerInput.rightKey = true;
 	}
-	else if (packet.packetID == InputKey::LEFT)
+
+	if (packet.packetID & InputKey::LEFT)
 	{
 		//playersData[clientPortID].transform.position = { 40, 40 };
 		playerInput.leftKey = true;
 	}
-	else if (packet.packetID == InputKey::SPACE)
+
+	if (packet.packetID & InputKey::SPACE)
 	{
 		playerInput.spaceKey = true;
 	}
@@ -567,7 +572,7 @@ void GameLoop(std::map<uint16_t, sockaddr_in>& clients)
 		float deltaTime = duration<float>(currTime - prevTime).count();
 		prevTime = currTime;
 
-		std::lock_guard<std::mutex> lock(gameDataMutex);
+		//std::lock_guard<std::mutex> lock(gameDataMutex);
 
 		for (auto& [portID, playerData] : playerDataMap)
 		{

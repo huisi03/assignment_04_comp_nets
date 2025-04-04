@@ -90,7 +90,7 @@ struct NetworkGameState
 	uint32_t playerCount{};
 	NetworkPlayerData playerData[MAX_PLAYERS];
 
-	uint32_t objectCount{};
+	//uint32_t objectCount{};
 	NetworkObject objects[MAX_NETWORK_OBJECTS];
 };
 #pragma pack()
@@ -105,9 +105,9 @@ extern NetworkLeaderboard leaderboard;
 
 // For serever
 // Functions to configure network data
-void ClearNetworkData();
-bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
-bool AddNetworkObject(int type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
+//void ClearNetworkData();
+//bool AddNetworkPlayerData(uint32_t identifier, uint32_t score, uint32_t lives);
+//bool AddNetworkObject(int type, AEVec2 const& position, AEVec2 const& velocity, float rotation, AEVec2 const& scale);
 
 // For client
 // Function to get the player data
